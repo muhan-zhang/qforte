@@ -257,7 +257,7 @@ class AnsatzAlgorithm(Algorithm):
         """ This function populates an operator pool with SQOperator objects.
         """
 
-        if self._pool_type in {'sa_SD', 'GSD', 'SD', 'SDT', 'SDTQ', 'SDTQP', 'SDTQPH'}:
+        if self._pool_type in {'sa_GSD', 'sa_SD', 'GSD', 'SD', 'SDT', 'SDTQ', 'SDTQP', 'SDTQPH'}:
             self._pool_obj = qf.SQOpPool()
             self._pool_obj.set_orb_spaces(self._ref)
             self._pool_obj.fill_pool(self._pool_type)

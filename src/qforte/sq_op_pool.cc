@@ -483,6 +483,110 @@ void SQOpPool::fill_pool(std::string pool_type){
                 }
             }
         }
+    } else if (pool_type=="sa_GSD"){
+        size_t norb = nocc_ + nvir_;
+
+        // single excitation
+        for(size_t i=0; i<norb; i++){
+            size_t ia = 2*i;
+            size_t ib = 2*i+1;
+
+            for (size_t a=i+1; a<norb; a++){
+                size_t aa = 2*a;
+                size_t ab = 2*a+1;
+
+                SQOperator temp1;
+                temp1.add_term(+1.0/std::sqrt(2), {aa}, {ia});
+                temp1.add_term(+1.0/std::sqrt(2), {ab}, {ib});
+
+                temp1.add_term(-1.0/std::sqrt(2), {ia}, {aa});
+                temp1.add_term(-1.0/std::sqrt(2), {ib}, {ab});
+
+                temp1.simplify();
+
+                // std::complex<double> temp1_norm(0.0, 0.0);
+                // for (const auto& term : temp1.terms()){
+                //     temp1_norm += std::norm(std::get<0>(term));
+                // }
+                // temp1.mult_coeffs(1.0/std::sqrt(temp1_norm));
+                add_term(1.0, temp1);
+            }
+        }
+
+        // double excitation
+        std::vector< std::vector<size_t> > uniqe_2bdy;
+        std::vector< std::vector<size_t> > adjnt_2bdy;
+
+        for (size_t i=0; i<norb; i++) {
+            size_t ia = 2*i;
+            size_t ib = 2*i+1;
+
+            for (size_t a=i+1; a<norb; a++) {
+                size_t aa = 2*a;
+                size_t ab = 2*a+1;
+
+                SQOperator temp2;
+                temp2.add_term(+1.0, {aa,ab}, {ia,ib});
+                temp2.add_term(-1.0, {ia,ib}, {aa,ab});
+                temp2.simplify();
+
+                if(temp2.terms().size() > 0){
+                    std::vector<size_t> vtemp {
+                        std::get<1>(temp2.terms()[0])[0], 
+                        std::get<1>(temp2.terms()[0])[1], 
+                        std::get<2>(temp2.terms()[0])[0], 
+                        std::get<2>(temp2.terms()[0])[1]
+                        };
+                    std::vector<size_t> vadjt {
+                        std::get<1>(temp2.terms()[1])[0], 
+                        std::get<1>(temp2.terms()[1])[1], 
+                        std::get<2>(temp2.terms()[1])[0], 
+                        std::get<2>(temp2.terms()[1])[1]};
+                    if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp)\
+                        == uniqe_2bdy.end()) ){
+                    if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp)\
+                        == adjnt_2bdy.end()) ){
+                            
+                        uniqe_2bdy.push_back(vtemp);
+                        adjnt_2bdy.push_back(vadjt);
+                        add_term(1.0, temp2);
+                        }
+                    }
+                }
+            }
+        }
+
+        // pair quadraple excitation
+        for (size_t i=0; i<norb; i++){
+            size_t ia = 2*i;
+            size_t ib = 2*i+1;
+
+            for (size_t j=i+1; j<norb; j++){
+                size_t ja = 2*j;
+                size_t jb = 2*j+1;
+
+                for (size_t a=j+1; a<norb; a++){
+                    size_t aa = 2*a;
+                    size_t ab = 2*a+1;
+
+                    for (size_t b=a+1; b<norb; b++){
+                        size_t ba = 2*b;
+                        size_t bb = 2*b+1;
+
+                        SQOperator temp4;
+                        temp4.add_term(+1.0, \
+                                       {aa,ab,ba,bb},\
+                                       {ia,ib,ja,jb});
+                        temp4.add_term(-1.0, \
+                                       {ia,ib,ja,jb},\
+                                       {aa,ab,ba,bb});
+                        
+                        temp4.simplify();
+                        add_term(1.0, temp4);
+                    }
+                }
+            }
+        }
     } else {
         throw std::invalid_argument( "Invalid pool_type specified." );
     }

@@ -28,6 +28,10 @@ const std::vector<std::pair< std::complex<double>, SQOperator>>& SQOpPool::terms
     return terms_;
 }
 
+const int SQOpPool::get_nsaop() const{
+    return nsaop_;
+}
+
 void SQOpPool::set_orb_spaces(const std::vector<int>& ref){
     int norb = ref.size();
     if (norb%2 == 0){
@@ -509,8 +513,8 @@ void SQOpPool::fill_pool(std::string pool_type){
         }
 
         // double excitation
-        std::vector< std::vector<size_t> > uniqe_2bdy;
-        std::vector< std::vector<size_t> > adjnt_2bdy;
+        std::vector< std::vector<size_t> > sa_uniqe_2bdy;
+        std::vector< std::vector<size_t> > sa_adjnt_2bdy;
 
         for (size_t i=0; i<norb; i++) {
             size_t ia = 2*i;
@@ -537,13 +541,13 @@ void SQOpPool::fill_pool(std::string pool_type){
                         std::get<1>(temp2.terms()[1])[1], 
                         std::get<2>(temp2.terms()[1])[0], 
                         std::get<2>(temp2.terms()[1])[1]};
-                    if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp)\
-                        == uniqe_2bdy.end()) ){
-                    if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp)\
-                        == adjnt_2bdy.end()) ){
+                    if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp)\
+                        == sa_uniqe_2bdy.end()) ){
+                    if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp)\
+                        == sa_adjnt_2bdy.end()) ){
                             
-                        uniqe_2bdy.push_back(vtemp);
-                        adjnt_2bdy.push_back(vadjt);
+                        sa_uniqe_2bdy.push_back(vtemp);
+                        sa_adjnt_2bdy.push_back(vadjt);
                         add_term(1.0, temp2);
                         }
                     }
@@ -551,37 +555,193 @@ void SQOpPool::fill_pool(std::string pool_type){
             }
         }
 
-        // pair quadraple excitation
-        for (size_t i=0; i<norb; i++){
+        // find the index where the spin-adapted pool
+        nsaop_ = this->terms().size();
+
+        // auxiliary pool
+        std::vector< std::vector<size_t> > uniqe_2bdy;
+        std::vector< std::vector<size_t> > adjnt_2bdy;
+
+        for(size_t i=0; i<norb; i++){
             size_t ia = 2*i;
             size_t ib = 2*i+1;
-
-            for (size_t j=i+1; j<norb; j++){
+            for(size_t j=i; j<norb; j++){
                 size_t ja = 2*j;
                 size_t jb = 2*j+1;
-
-                for (size_t a=j+1; a<norb; a++){
+                for(size_t a=0; a<norb; a++){
                     size_t aa = 2*a;
                     size_t ab = 2*a+1;
-
-                    for (size_t b=a+1; b<norb; b++){
+                    for(size_t b=a; b<norb; b++){
                         size_t ba = 2*b;
                         size_t bb = 2*b+1;
 
-                        SQOperator temp4;
-                        temp4.add_term(+1.0, \
-                                       {aa,ab,ba,bb},\
-                                       {ia,ib,ja,jb});
-                        temp4.add_term(-1.0, \
-                                       {ia,ib,ja,jb},\
-                                       {aa,ab,ba,bb});
-                        
-                        temp4.simplify();
-                        add_term(1.0, temp4);
+                        if((aa != ba) && (ia != ja)){
+                            SQOperator temp2aaaa;
+                            temp2aaaa.add_term(+1.0, {aa,ba}, {ia,ja});
+                            temp2aaaa.add_term(-1.0, {ja,ia}, {ba,aa});
+                            temp2aaaa.simplify();
+                            if(temp2aaaa.terms().size() > 0){
+                                std::vector<size_t> vtemp {std::get<1>(temp2aaaa.terms()[0])[0], std::get<1>(temp2aaaa.terms()[0])[1], std::get<2>(temp2aaaa.terms()[0])[0], std::get<2>(temp2aaaa.terms()[0])[1]};
+                                std::vector<size_t> vadjt {std::get<1>(temp2aaaa.terms()[1])[0], std::get<1>(temp2aaaa.terms()[1])[1], std::get<2>(temp2aaaa.terms()[1])[0], std::get<2>(temp2aaaa.terms()[1])[1]};
+                                if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp) == uniqe_2bdy.end()) ){
+                                if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp) == adjnt_2bdy.end()) ){
+                                if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp) == sa_uniqe_2bdy.end()) ){
+                                if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp) == sa_adjnt_2bdy.end()) ){
+                                    uniqe_2bdy.push_back(vtemp);
+                                    adjnt_2bdy.push_back(vadjt);
+                                    add_term(1.0, temp2aaaa);
+                                }
+                                }
+                                }
+                                }
+                            }
+                        }
+
+                        if((ab != bb ) && (ib != jb)){
+                            SQOperator temp2bbbb;
+                            temp2bbbb.add_term(+1.0, {ab,bb}, {ib,jb});
+                            temp2bbbb.add_term(-1.0, {jb,ib}, {bb,ab});
+                            temp2bbbb.simplify();
+                            if(temp2bbbb.terms().size() > 0){
+                                std::vector<size_t> vtemp {std::get<1>(temp2bbbb.terms()[0])[0], std::get<1>(temp2bbbb.terms()[0])[1], std::get<2>(temp2bbbb.terms()[0])[0], std::get<2>(temp2bbbb.terms()[0])[1]};
+                                std::vector<size_t> vadjt {std::get<1>(temp2bbbb.terms()[1])[0], std::get<1>(temp2bbbb.terms()[1])[1], std::get<2>(temp2bbbb.terms()[1])[0], std::get<2>(temp2bbbb.terms()[1])[1]};
+                                if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp) == uniqe_2bdy.end()) ){
+                                if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp) == adjnt_2bdy.end()) ){
+                                if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp) == sa_uniqe_2bdy.end()) ){
+                                if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp) == sa_adjnt_2bdy.end()) ){
+                                    uniqe_2bdy.push_back(vtemp);
+                                    adjnt_2bdy.push_back(vadjt);
+                                    add_term(1.0, temp2bbbb);
+                                }
+                                }
+                                }
+                                }
+                            }
+                        }
+
+                        if((aa != bb) && (ia != jb)){
+                            SQOperator temp2abab;
+                            temp2abab.add_term(+1.0, {aa,bb}, {ia,jb});
+                            temp2abab.add_term(-1.0, {jb,ia}, {bb,aa});
+                            temp2abab.simplify();
+                            if(temp2abab.terms().size() > 0){
+                                std::vector<size_t> vtemp {std::get<1>(temp2abab.terms()[0])[0], std::get<1>(temp2abab.terms()[0])[1], std::get<2>(temp2abab.terms()[0])[0], std::get<2>(temp2abab.terms()[0])[1]};
+                                std::vector<size_t> vadjt {std::get<1>(temp2abab.terms()[1])[0], std::get<1>(temp2abab.terms()[1])[1], std::get<2>(temp2abab.terms()[1])[0], std::get<2>(temp2abab.terms()[1])[1]};
+                                if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp) == uniqe_2bdy.end()) ){
+                                if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp) == adjnt_2bdy.end()) ){
+                                if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp) == sa_uniqe_2bdy.end()) ){
+                                if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp) == sa_adjnt_2bdy.end()) ){
+                                    uniqe_2bdy.push_back(vtemp);
+                                    adjnt_2bdy.push_back(vadjt);
+                                    add_term(1.0, temp2abab);
+                                }
+                                }
+                                }
+                                }
+                            }
+                        }
+
+                        if((ab != ba) && (ib != ja)){
+                            SQOperator temp2baba;
+                            temp2baba.add_term(+1.0, {ab,ba}, {ib,ja});
+                            temp2baba.add_term(-1.0, {ja,ib}, {ba,ab});
+                            temp2baba.simplify();
+                            if(temp2baba.terms().size() > 0){
+                                std::vector<size_t> vtemp {std::get<1>(temp2baba.terms()[0])[0], std::get<1>(temp2baba.terms()[0])[1], std::get<2>(temp2baba.terms()[0])[0], std::get<2>(temp2baba.terms()[0])[1]};
+                                std::vector<size_t> vadjt {std::get<1>(temp2baba.terms()[1])[0], std::get<1>(temp2baba.terms()[1])[1], std::get<2>(temp2baba.terms()[1])[0], std::get<2>(temp2baba.terms()[1])[1]};
+                                if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp) == uniqe_2bdy.end()) ){
+                                if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp) == adjnt_2bdy.end()) ){
+                                if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp) == sa_uniqe_2bdy.end()) ){
+                                if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp) == sa_adjnt_2bdy.end()) ){
+                                    uniqe_2bdy.push_back(vtemp);
+                                    adjnt_2bdy.push_back(vadjt);
+                                    add_term(1.0, temp2baba);
+                                }
+                                }
+                                }
+                                }
+                            }
+                        }
+
+                        if((aa != bb) && (ib != ja)){
+                            SQOperator temp2abba;
+                            temp2abba.add_term(+1.0, {aa,bb}, {ib,ja});
+                            temp2abba.add_term(-1.0, {ja,ib}, {bb,aa});
+                            temp2abba.simplify();
+                            if(temp2abba.terms().size() > 0){
+                                std::vector<size_t> vtemp {std::get<1>(temp2abba.terms()[0])[0], std::get<1>(temp2abba.terms()[0])[1], std::get<2>(temp2abba.terms()[0])[0], std::get<2>(temp2abba.terms()[0])[1]};
+                                std::vector<size_t> vadjt {std::get<1>(temp2abba.terms()[1])[0], std::get<1>(temp2abba.terms()[1])[1], std::get<2>(temp2abba.terms()[1])[0], std::get<2>(temp2abba.terms()[1])[1]};
+                                if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp) == uniqe_2bdy.end()) ){
+                                if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp) == adjnt_2bdy.end()) ){
+                                if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp) == sa_uniqe_2bdy.end()) ){
+                                if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp) == sa_adjnt_2bdy.end()) ){
+                                    uniqe_2bdy.push_back(vtemp);
+                                    adjnt_2bdy.push_back(vadjt);
+                                    add_term(1.0, temp2abba);
+                                }
+                                }
+                                }
+                                }
+                            }
+                        }
+
+                        if((ab != ba) && (ia != jb)){
+                            SQOperator temp2baab;
+                            temp2baab.add_term(+1.0, {ab,ba}, {ia,jb});
+                            temp2baab.add_term(-1.0, {jb,ia}, {ba,ab});
+                            temp2baab.simplify();
+                            if(temp2baab.terms().size() > 0){
+                                std::vector<size_t> vtemp {std::get<1>(temp2baab.terms()[0])[0], std::get<1>(temp2baab.terms()[0])[1], std::get<2>(temp2baab.terms()[0])[0], std::get<2>(temp2baab.terms()[0])[1]};
+                                std::vector<size_t> vadjt {std::get<1>(temp2baab.terms()[1])[0], std::get<1>(temp2baab.terms()[1])[1], std::get<2>(temp2baab.terms()[1])[0], std::get<2>(temp2baab.terms()[1])[1]};
+                                if( (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp) == uniqe_2bdy.end()) ){
+                                if( (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp) == adjnt_2bdy.end()) ){
+                                if( (std::find(sa_uniqe_2bdy.begin(), sa_uniqe_2bdy.end(), vtemp) == sa_uniqe_2bdy.end()) ){
+                                if( (std::find(sa_adjnt_2bdy.begin(), sa_adjnt_2bdy.end(), vtemp) == sa_adjnt_2bdy.end()) ){
+                                    uniqe_2bdy.push_back(vtemp);
+                                    adjnt_2bdy.push_back(vadjt);
+                                    add_term(1.0, temp2baab);
+                                }
+                                }
+                                }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // pair quadraple excitation
+        // for (size_t i=0; i<norb; i++){
+        //     size_t ia = 2*i;
+        //     size_t ib = 2*i+1;
+
+        //     for (size_t j=i+1; j<norb; j++){
+        //         size_t ja = 2*j;
+        //         size_t jb = 2*j+1;
+
+        //         for (size_t a=j+1; a<norb; a++){
+        //             size_t aa = 2*a;
+        //             size_t ab = 2*a+1;
+
+        //             for (size_t b=a+1; b<norb; b++){
+        //                 size_t ba = 2*b;
+        //                 size_t bb = 2*b+1;
+
+        //                 SQOperator temp4;
+        //                 temp4.add_term(+1.0, \
+        //                                {aa,ab,ba,bb},\
+        //                                {ia,ib,ja,jb});
+        //                 temp4.add_term(-1.0, \
+        //                                {ia,ib,ja,jb},\
+        //                                {aa,ab,ba,bb});
+                        
+        //                 temp4.simplify();
+        //                 add_term(1.0, temp4);
+        //             }
+        //         }
+        //     }
+        // }
     } else {
         throw std::invalid_argument( "Invalid pool_type specified." );
     }

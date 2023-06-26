@@ -85,7 +85,9 @@ class ADAPTVQE(UCCVQE):
             optimizer='BFGS',
             use_analytic_grad = True,
             use_cumulative_thresh = False,
-            add_equiv_ops = False):
+            add_equiv_ops = False,
+            nsaop=0,
+            pla_thres=1.0e-4):
 
         self._avqe_thresh = avqe_thresh
         self._opt_thresh = opt_thresh
@@ -96,6 +98,12 @@ class ADAPTVQE(UCCVQE):
         self._pool_type = pool_type
         self._use_cumulative_thresh = use_cumulative_thresh
         self._add_equiv_ops = add_equiv_ops
+        self._pla_thres = pla_thres
+
+        if self._pool_type == "sa_GSD":
+            self._use_aux_pool = True
+        else:
+            self._use_aux_pool = False
 
         self._results = []
         self._energies = []
@@ -127,6 +135,10 @@ class ADAPTVQE(UCCVQE):
 
         self.fill_pool()
 
+        if self._use_aux_pool:
+            self._nsaop = nsaop
+            self._energy_plateau = False
+
         if self._max_moment_rank:
             print('\nConstructing Moller-Plesset and Epstein-Nesbet denominators')
             self.construct_moment_space()
@@ -139,6 +151,7 @@ class ADAPTVQE(UCCVQE):
 
         avqe_iter = 0
         hit_maxiter = 0
+        init_energy = 1.0
 
         if (self._print_summary_file):
             f = open("summary.dat", "w+", buffering=1)
@@ -158,6 +171,9 @@ class ADAPTVQE(UCCVQE):
                 print('\ntamplitudes for tops: \n', self._tamps)
 
             self.solve()
+
+            if self._use_aux_pool:
+                init_energy = self.check_plateau(init_energy)
 
             if self._max_moment_rank:
                 print('\nComputing non-iterative energy corrections')
@@ -341,6 +357,17 @@ class ADAPTVQE(UCCVQE):
         self._n_pauli_trm_measures_lst.append(self._n_pauli_measures_k)
         self._n_cnot_lst.append(self.build_Uvqc().get_num_cnots())
 
+    # Define plateau checking
+    def check_plateau(self, init_energy):
+        """
+        """
+        energy_diff = abs(self._energies[-1] - init_energy)
+        if energy_diff < self._pla_thres:
+            self._energy_plateau = True
+        else:
+            self._energy_plateau = False
+        return copy.deepcopy(self._energies[-1])
+
     # Define ADAPT-VQE methods.
     def update_ansatz(self):
         """Adds a parameter and operator to the ADAPT-VQE circuit based on the
@@ -367,6 +394,14 @@ class ADAPTVQE(UCCVQE):
             if (self._verbose):
                 print(f'       {m:3}                {self._Nm[m]:8}             {grad_m:+12.9f}      {self._pool_obj[m][1].terms()[0][1]}')
 
+            if self._use_aux_pool:
+                if not self._energy_plateau:
+                    if m >= self._nsaop:
+                        continue
+                else:
+                    if m < self._nsaop:
+                        continue
+                
             if (abs(grad_m) > abs(lgrst_grad)):
 
                 if(abs(lgrst_grad) > 0.0):
@@ -421,12 +456,24 @@ class ADAPTVQE(UCCVQE):
         """Sets the convergence states.
         """
         if abs(self._curr_grad_norm) < abs(self._avqe_thresh):
+            # if not self._use_aux_pool:
             self._converged = True
             self._final_energy = self._energies[-1]
             if self._optimizer.lower() != 'jacobi':
                 self._final_result = self._results[-1]
+            # else:
+            #     if self._energy_plateau:
+            #         self._converged = True
+            #         self._final_energy = self._energies[-1]
+            #         if self._optimizer.lower() != 'jacobi':
+            #             self._final_result = self._results[-1]
+            #     else:
+            #         self._energy_plateau = True
+            #         self._converged = False
         else:
             self._converged = False
+            # if self._use_aux_pool:
+            #     self._energy_plateau = False
 
     def get_num_ham_measurements(self):
         for res in self._results:

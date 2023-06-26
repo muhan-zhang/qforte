@@ -58,6 +58,7 @@ PYBIND11_MODULE(qforte, m) {
         .def("add_term", &SQOpPool::add_term)
         .def("set_coeffs", &SQOpPool::set_coeffs)
         .def("terms", &SQOpPool::terms)
+        .def("get_nsaop", &SQOpPool::get_nsaop)
         .def("set_orb_spaces", &SQOpPool::set_orb_spaces)
         .def("get_qubit_op_pool", &SQOpPool::get_qubit_op_pool)
         .def("get_qubit_operator", &SQOpPool::get_qubit_operator, py::arg("order_type"),

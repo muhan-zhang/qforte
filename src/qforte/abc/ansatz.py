@@ -33,10 +33,20 @@ class UCC:
         if self._compact_excitations:
             U = qf.Circuit()
             for tamp, top in zip(tamps, self._tops):
-                U.add(compact_excitation_circuit(tamp * self._pool_obj[top][1].terms()[1][0],
-                                                        self._pool_obj[top][1].terms()[1][1],
-                                                        self._pool_obj[top][1].terms()[1][2],
-                                                        self._qubit_excitations))
+                if self._pool_type == "sa_GSD" and len(self._pool_obj[top][1].terms()) > 2:
+                    U.add(compact_excitation_circuit(tamp * self._pool_obj[top][1].terms()[2][0],
+                                                            self._pool_obj[top][1].terms()[2][1],
+                                                            self._pool_obj[top][1].terms()[2][2],
+                                                            self._qubit_excitations))
+                    U.add(compact_excitation_circuit(tamp * self._pool_obj[top][1].terms()[3][0],
+                                                            self._pool_obj[top][1].terms()[3][1],
+                                                            self._pool_obj[top][1].terms()[3][2],
+                                                            self._qubit_excitations))
+                else:
+                    U.add(compact_excitation_circuit(tamp * self._pool_obj[top][1].terms()[1][0],
+                                                            self._pool_obj[top][1].terms()[1][1],
+                                                            self._pool_obj[top][1].terms()[1][2],
+                                                            self._qubit_excitations))
             return U
 
         for tamp, top in zip(tamps, self._tops):

@@ -174,10 +174,20 @@ class UCCVQE(VQE, UCC):
                 Umu = qf.Circuit()
                 # The minus sign is dictated by the recursive algorithm used to compute the analytic gradient
                 # (see original ADAPT-VQE paper)
-                Umu.add(compact_excitation_circuit(-tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[1][0],
-                                                           self._pool_obj[self._tops[mu + 1]][1].terms()[1][1],
-                                                           self._pool_obj[self._tops[mu + 1]][1].terms()[1][2],
-                                                           self._qubit_excitations))
+                if self._pool_type == "sa_GSD" and len(self._pool_obj[self._tops[mu + 1]][1].terms()) > 2:
+                    Umu.add(compact_excitation_circuit(-tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[2][0],
+                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[2][1],
+                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[2][2],
+                                                               self._qubit_excitations))
+                    Umu.add(compact_excitation_circuit(-tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[3][0],
+                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[3][1],
+                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[3][2],
+                                                               self._qubit_excitations))
+                else:
+                    Umu.add(compact_excitation_circuit(-tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[1][0],
+                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[1][1],
+                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[1][2],
+                                                               self._qubit_excitations))
             else:
                 # The minus sign is dictated by the recursive algorithm used to compute the analytic gradient
                 # (see original ADAPT-VQE paper)

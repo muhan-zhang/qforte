@@ -517,6 +517,8 @@ void SQOpPool::fill_pool(std::string pool_type){
                 size_t aa = 2*a;
                 size_t ab = 2*a+1;
 
+                if (!find_irrep(orb_irreps_to_int_, std::vector<size_t>{ia,aa})) {
+
                 SQOperator temp1;
                 temp1.add_term(+1.0/std::sqrt(2), {aa}, {ia});
                 temp1.add_term(+1.0/std::sqrt(2), {ab}, {ib});
@@ -532,10 +534,10 @@ void SQOpPool::fill_pool(std::string pool_type){
                 // }
                 // temp1.mult_coeffs(1.0/std::sqrt(temp1_norm));
                 add_term(1.0, temp1);
-            }
+            }}
         }
 
-        // double excitation
+        // pair double excitation
         std::vector< std::vector<size_t> > sa_uniqe_2bdy;
         std::vector< std::vector<size_t> > sa_adjnt_2bdy;
 
@@ -546,6 +548,8 @@ void SQOpPool::fill_pool(std::string pool_type){
             for (size_t a=i+1; a<norb; a++) {
                 size_t aa = 2*a;
                 size_t ab = 2*a+1;
+
+                if (!find_irrep(orb_irreps_to_int_, std::vector<size_t>{ia, ia, aa, aa})) {
 
                 SQOperator temp2;
                 temp2.add_term(+1.0, {aa,ab}, {ia,ib});
@@ -575,7 +579,7 @@ void SQOpPool::fill_pool(std::string pool_type){
                         }
                     }
                 }
-            }
+            }}
         }
 
         // find the index where the spin-adapted pool
@@ -597,6 +601,8 @@ void SQOpPool::fill_pool(std::string pool_type){
                     for(size_t b=a; b<norb; b++){
                         size_t ba = 2*b;
                         size_t bb = 2*b+1;
+
+                        if (!find_irrep(orb_irreps_to_int_, std::vector<size_t>{ia,ja,aa,ba})) {
 
                         if((aa != ba) && (ia != ja)){
                             SQOperator temp2aaaa;
@@ -729,7 +735,7 @@ void SQOpPool::fill_pool(std::string pool_type){
                                 }
                             }
                         }
-                    }
+                    }}
                 }
             }
         }

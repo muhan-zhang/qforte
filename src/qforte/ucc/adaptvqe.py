@@ -86,8 +86,7 @@ class ADAPTVQE(UCCVQE):
             use_analytic_grad = True,
             use_cumulative_thresh = False,
             add_equiv_ops = False,
-            # nsaop=0,
-            # pla_thres=1.0e-4
+            pre_tops_tamps = None
             ):
 
         self._avqe_thresh = avqe_thresh
@@ -109,8 +108,13 @@ class ADAPTVQE(UCCVQE):
         self._results = []
         self._energies = []
         self._grad_norms = []
-        self._tops = []
-        self._tamps = []
+        if pre_tops_tamps is None:
+            self._tops = []
+            self._tamps = []
+        else:
+            self._tops = pre_tops_tamps[0]
+            self._tamps = pre_tops_tamps[1]
+        # self._tamps = []
         self._tamps_per_cycle = []
         self._commutator_pool = []
         self._converged = 0

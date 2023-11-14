@@ -525,7 +525,7 @@ void SQOpPool::fill_pool(std::string pool_type){
             }
         }
     } else if (pool_type=="sa_GSD"){
-        size_t norb = nocc_ + nvir_;
+        size_t norb = n_occ_alpha_ + n_vir_alpha_;
 
         // single excitation
         for(size_t i=0; i<norb; i++){

@@ -2,7 +2,8 @@ Qforte
 ==============================
 [//]: # (Badges)
 
-![Travis Build Status](https://travis-ci.org/evangelistalab/qforte.svg?branch=master)
+[![Python Package using Conda](https://github.com/evangelistalab/qforte/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/evangelistalab/qforte/actions/workflows/python-package-conda.yml)
+[![codecov](https://codecov.io/gh/evangelistalab/qforte/graph/badge.svg?token=LE8PEQC2BH)](https://codecov.io/gh/evangelistalab/qforte)
 [![Documentation Status](https://readthedocs.org/projects/qforte/badge/?version=latest)](https://qforte.readthedocs.io/en/latest/?badge=latest)
 
 
@@ -54,7 +55,7 @@ conda activate qforte_env
 #### install required packages:
 ```bash
 conda install psi4 -c psi4
-conda install scipy
+conda install scipy>=1.11
 ```
 
 Installation (For Development)

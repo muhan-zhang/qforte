@@ -401,7 +401,7 @@ class ADAPTVQE(UCCVQE):
                         continue
                 else:
                     if m < self._nsaop:
-                        continue
+                        pass
 
             # refers to number of times sigma_y must be measured in "strategies for UCC" grad eval circuit
             self._n_pauli_measures_k += self._Nl * self._Nm[m]

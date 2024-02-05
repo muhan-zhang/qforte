@@ -76,6 +76,7 @@ PYBIND11_MODULE(qforte, m) {
         .def("add_term", &SQOpPool::add_term)
         .def("set_coeffs", &SQOpPool::set_coeffs)
         .def("terms", &SQOpPool::terms)
+        .def("get_nsaop", &SQOpPool::get_nsaop)
         .def("set_orb_spaces", &SQOpPool::set_orb_spaces, py::arg("ref"),
              py::arg("orb_irreps_to_int") = std::vector<size_t>{})
         .def("get_qubit_op_pool", &SQOpPool::get_qubit_op_pool)

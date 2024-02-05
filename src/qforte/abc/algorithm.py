@@ -256,7 +256,7 @@ class AnsatzAlgorithm(Algorithm):
         """ This function populates an operator pool with SQOperator objects.
         """
 
-        if self._pool_type in {'sa_SD', 'GSD', 'SD', 'SDT', 'SDTQ', 'SDTQP', 'SDTQPH'}:
+        if self._pool_type in {'sa_GSD', 'sa_SD', 'GSD', 'SD', 'SDT', 'SDTQ', 'SDTQP', 'SDTQPH'}:
             if self._pool_type == 'sa_SD' and self._compact_excitations:
                 raise ValueError('Compact excitation circuits not yet implemented for sa_SD operator pool.')
             self._pool_obj = qf.SQOpPool()

@@ -26,6 +26,9 @@ class SQOpPool {
     /// return a vector of terms and their coeficients
     const std::vector<std::pair< std::complex<double>, SQOperator>>& terms() const;
 
+    /// return the index separating the spin-adapted pool and auxiliary pool in "sa_GSD"
+    const int get_nsaop() const;
+
     /// set the total number of occupied and virtual spatial orbitals from a reference, from the number
     ///     of occupied spin orbitals of each point group symmetry
     void set_orb_spaces(const std::vector<int>& ref, const std::vector<size_t>& orb_irreps_to_int = {});
@@ -61,6 +64,9 @@ class SQOpPool {
     /// the number of virtual beta spinorbitals
     int n_vir_beta_;
 
+    /// the number of spin-adapted operators
+    int nsaop_=0;
+    
     /// the list of integers representing the irreps of the orbitals
     std::vector<size_t> orb_irreps_to_int_;
 

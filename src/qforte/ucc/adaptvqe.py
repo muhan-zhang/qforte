@@ -398,10 +398,7 @@ class ADAPTVQE(UCCVQE):
             if self._use_aux_pool:
                 if not self._is_sa_converged:
                     if m >= self._nsaop:
-                        continue
-                else:
-                    if m < self._nsaop:
-                        pass
+                        continue # main pool
 
             # refers to number of times sigma_y must be measured in "strategies for UCC" grad eval circuit
             self._n_pauli_measures_k += self._Nl * self._Nm[m]

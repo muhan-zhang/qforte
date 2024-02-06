@@ -144,6 +144,9 @@ class ADAPTVQE(UCCVQE):
         if self._use_aux_pool:
             self._nsaop = self._pool_obj.get_nsaop()
             self._is_sa_converged = False
+            if self._penalty is not None:
+                penalties_temp_qop = self._qb_ham
+                self._is_qb_ham_init = False
 
         if self._max_moment_rank:
             print('\nConstructing Moller-Plesset and Epstein-Nesbet denominators')
@@ -167,6 +170,17 @@ class ADAPTVQE(UCCVQE):
         while not self._converged:
 
             print('\n\n -----> ADAPT-VQE iteration ', avqe_iter, ' <-----\n')
+            if self._use_aux_pool and self._penalty is not None:
+                if not self._is_sa_converged:
+                    if not self._is_qb_ham_init:
+                        self._qb_ham = qf.QubitOperator()
+                        self._qb_ham.add(self._sys.hamiltonian)
+                        self._is_qb_ham_init = True
+                else:
+                    if self._is_qb_ham_init:
+                        self._qb_ham = penalties_temp_qop
+                        self._is_qb_ham_init = False
+
             self.update_ansatz()
 
             if self._converged:

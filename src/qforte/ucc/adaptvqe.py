@@ -175,10 +175,12 @@ class ADAPTVQE(UCCVQE):
                     if not self._is_qb_ham_init:
                         self._qb_ham = qf.QubitOperator()
                         self._qb_ham.add(self._sys.hamiltonian)
+                        self._Nl = len(self._qb_ham.terms())
                         self._is_qb_ham_init = True
                 else:
                     if self._is_qb_ham_init:
                         self._qb_ham = penalties_temp_qop
+                        self._Nl = len(self._qb_ham.terms())
                         self._is_qb_ham_init = False
 
             self.update_ansatz()

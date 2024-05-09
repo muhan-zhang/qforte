@@ -49,6 +49,7 @@ PYBIND11_MODULE(qforte, m) {
         .def("get_parameters", &Circuit::get_parameters)
         .def("get_num_cnots", &Circuit::get_num_cnots)
         .def("is_pauli", &Circuit::is_pauli)
+        .def("simplify", &Circuit::simplify)
         .def("str", &Circuit::str)
         .def("__str__", &Circuit::str)
         .def("__repr__", &Circuit::str)
@@ -243,7 +244,7 @@ PYBIND11_MODULE(qforte, m) {
 
             // only single qubit gates accept this synthax
             auto vec = {"X",  "Y", "Z", "H", "R", "Rx",  "Ry",
-                        "Rz", "V", "S", "T", "I", "Rzy", "rU1"};
+                        "Rz", "V", "S", "T", "I"};
             if (std::find(vec.begin(), vec.end(), type) != vec.end()) {
                 return make_gate(type, target, target, parameter.real());
             }
@@ -266,7 +267,7 @@ PYBIND11_MODULE(qforte, m) {
             // target and control
             if (target == control) {
                 auto vec2 = {
-                    "X", "Y", "Z", "H", "V", "S", "T", "I", "Rzy",
+                    "X", "Y", "Z", "H", "V", "S", "T", "I",
                 };
                 if (std::find(vec2.begin(), vec2.end(), type) != vec2.end()) {
                     return make_gate(type, target, control, 0.0);
@@ -290,6 +291,8 @@ PYBIND11_MODULE(qforte, m) {
         "type"_a, "target"_a, "control"_a, "parameter"_a = 0.0, "Make a gate.");
 
     m.def("control_gate", &make_control_gate, "control"_a, "Gate"_a);
+    
+    m.def("evaluate_gate_interaction", &evaluate_gate_interaction, "Gate"_a, "Gate"_a);
 
     m.def(
         "prepare_computer_from_circuit",

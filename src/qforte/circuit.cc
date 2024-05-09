@@ -174,7 +174,7 @@ int Circuit::get_num_cnots() const {
         if (gate.gate_id() == "CNOT" || gate.gate_id() == "cX" || gate.gate_id() == "aCNOT" ||
             gate.gate_id() == "acX") {
             n_cnots++;
-        } else if (gate.gate_id() == "A") {
+        } else if (gate.gate_id() == "A" || gate.gate_id() == "SWAP") {
             n_cnots += 3;
         }
     }
@@ -224,6 +224,84 @@ bool Circuit::is_pauli() const {
         }
     }
     return true;
+}
+
+void Circuit::simplify() {
+
+    const std::unordered_set<GateType> involutory_gates = {GateType::X, GateType::Y, GateType::Z,
+                                                           GateType::cX, GateType::cY, GateType::cZ,
+                                                           GateType::acX, GateType::H, GateType::SWAP};
+
+    const std::unordered_set<GateType> parametrized_gates = {GateType::Rx, GateType::Ry, GateType::Rz,
+                                                             GateType::R, GateType::cRz, GateType::cR};
+
+    const std::unordered_set<GateType> square_root_gates = {GateType::T, GateType::S, GateType::V,
+                                                            GateType::cV};
+
+    const std::unordered_map<GateType, std::string> simplify_square_root_gates = {{GateType::T, "S"}, {GateType::S, "Z"},
+                                                                                  {GateType::V, "X"}, {GateType::cV, "cX"}}; 
+
+    std::vector<size_t> gate_indices_to_remove;
+
+    for (size_t pos1 = 0; pos1 < gates_.size(); pos1++) {
+        if (std::find(gate_indices_to_remove.begin(), gate_indices_to_remove.end(), pos1) != gate_indices_to_remove.end()) {
+            continue;
+        }
+        Gate gate1 = gates_[pos1];
+        for (size_t pos2 = pos1 + 1; pos2 < gates_.size(); pos2++) {
+            if (std::find(gate_indices_to_remove.begin(), gate_indices_to_remove.end(), pos2) != gate_indices_to_remove.end()) {
+                continue;
+            }
+            Gate gate2 = gates_[pos2];
+            bool commute;
+            int simplification_case;
+            std::tie(commute, simplification_case) = evaluate_gate_interaction(gate1, gate2);
+            if (commute) {
+                if (simplification_case == 0) {
+                    continue;
+                }
+                if (simplification_case == 1) {
+                    if (involutory_gates.find(gate1.gate_type()) != involutory_gates.end()) {
+                        gate_indices_to_remove.push_back(pos1);
+                        gate_indices_to_remove.push_back(pos2);
+                        break;
+                    }
+                    if (parametrized_gates.find(gate1.gate_type()) != parametrized_gates.end()) {
+                        gate_indices_to_remove.push_back(pos1);
+                        gates_[pos2] =
+                        make_gate(gates_[pos2].gate_id(), gates_[pos2].target(), gates_[pos2].control(), *gate1.parameter() + *gate2.parameter());
+                        break;
+                    }
+                    if (square_root_gates.find(gate1.gate_type()) != square_root_gates.end()) {
+                        gate_indices_to_remove.push_back(pos1);
+                        gates_[pos2] =
+                        make_gate(simplify_square_root_gates.at(gate2.gate_type()), gates_[pos2].target(), gates_[pos2].control());
+                        break;
+                    }
+                }
+                if (simplification_case == 2) {
+                    if (involutory_gates.find(gate1.gate_type()) != involutory_gates.end()) {
+                        gate_indices_to_remove.push_back(pos1);
+                        gate_indices_to_remove.push_back(pos2);
+                        break;
+                    }
+                    if (phase_1qubit_gates.find(controlled_2qubit_to_1qubit_gate.at(gate1.gate_type())) != phase_1qubit_gates.end()) {
+                        gate_indices_to_remove.push_back(pos1);
+                        gates_[pos2] =
+                        make_gate(gates_[pos2].gate_id(), gates_[pos2].target(), gates_[pos2].control(), *gate1.parameter() + *gate2.parameter());
+                        break;
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    std::sort(gate_indices_to_remove.begin(), gate_indices_to_remove.end());
+    std::reverse(gate_indices_to_remove.begin(), gate_indices_to_remove.end());
+    for (size_t pos : gate_indices_to_remove) {
+        gates_.erase(gates_.begin() + pos);
+    }
 }
 
 bool operator==(const Circuit& circ1, const Circuit& circ2) {

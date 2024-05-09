@@ -106,27 +106,11 @@ Gate make_gate(std::string type, size_t target, size_t control, double parameter
             };
             return Gate(type, target, control, gate);
         }
-        if (type == "Rzy") {
-            std::complex<double> c = 1.0 / std::sqrt(2.0);
-            std::complex<double> c_i = onei / std::sqrt(2.0);
-            std::complex<double> gate[4][4]{
-                {+c_i, +c},
-                {+c, +c_i},
-            };
-            return Gate(type, target, control, gate);
-        }
-        if (type == "rU1") {
-            std::complex<double> a = std::cos(parameter);
-            std::complex<double> b = std::sin(parameter);
-            std::complex<double> gate[4][4]{
-                {+a, -b},
-                {+b, +a},
-            };
-            return Gate(type, target, control, gate, std::make_pair(parameter, true));
-        }
 
     } else {
         if (type == "A") {
+            // The A gate is the particle-number preserving gate introduced in DOI: 10.1103/PhysRevA.98.022322.
+            // Its decomposition in elementary gates requires 3 CNOTs.
             std::complex<double> c = std::cos(parameter);
             std::complex<double> s = std::sin(parameter);
             std::complex<double> gate[4][4]{
@@ -216,17 +200,6 @@ Gate make_gate(std::string type, size_t target, size_t control, double parameter
                 {0.0, 0.0, 0.0, 1.0},
             };
             return Gate(type, target, control, gate);
-        }
-        if (type == "rU2") {
-            std::complex<double> a = std::cos(parameter);
-            std::complex<double> b = std::sin(parameter);
-            std::complex<double> gate[4][4]{
-                {+a, -b, 0.0, 0.0},
-                {+b, +a, 0.0, 0.0},
-                {0.0, 0.0, +a, -b},
-                {0.0, 0.0, +b, +a},
-            };
-            return Gate(type, target, control, gate, std::make_pair(parameter, true));
         }
     }
     // If you reach this section then the gate type is not implemented or it is invalid.

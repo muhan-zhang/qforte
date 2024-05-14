@@ -226,6 +226,25 @@ bool Circuit::is_pauli() const {
     return true;
 }
 
+double Circuit::get_phase_gate_parameter(const Gate& gate) {
+    std::unordered_map<GateType, double> gate_parameters = {
+        {GateType::T, M_PI / 4},
+        {GateType::S, M_PI / 2},
+        {GateType::Z, M_PI}
+    };
+
+    if (gate.has_parameter()) {
+        return gate.parameter().value();
+    } else {
+        auto it = gate_parameters.find(gate.gate_type());
+        if (it != gate_parameters.end()) {
+            return it->second;
+        } else {
+            throw std::invalid_argument("Unknown single-qubit phase gate encountered: " + gate.gate_id());
+        }
+    }
+}
+
 void Circuit::simplify() {
 
     const std::unordered_set<GateType> involutory_gates = {GateType::X, GateType::Y, GateType::Z,
@@ -236,10 +255,11 @@ void Circuit::simplify() {
                                                              GateType::R, GateType::cRz, GateType::cR};
 
     const std::unordered_set<GateType> square_root_gates = {GateType::T, GateType::S, GateType::V,
-                                                            GateType::cV};
+                                                            GateType::cV, GateType::adjV, GateType::adjcV};
 
     const std::unordered_map<GateType, std::string> simplify_square_root_gates = {{GateType::T, "S"}, {GateType::S, "Z"},
-                                                                                  {GateType::V, "X"}, {GateType::cV, "cX"}}; 
+                                                                                  {GateType::V, "X"}, {GateType::cV, "cX"},
+                                                                                  {GateType::adjV, "X"}, {GateType::adjcV, "cX"}}; 
 
     std::vector<size_t> gate_indices_to_remove;
 
@@ -291,6 +311,17 @@ void Circuit::simplify() {
                         make_gate(gates_[pos2].gate_id(), gates_[pos2].target(), gates_[pos2].control(), *gate1.parameter() + *gate2.parameter());
                         break;
                     }
+                }
+                if (simplification_case == 3) {
+                    gate_indices_to_remove.push_back(pos1);
+                    gates_[pos2] =
+                        make_gate("R", gates_[pos2].target(), gates_[pos2].control(), get_phase_gate_parameter(gate1) + get_phase_gate_parameter(gate2));
+                    break;
+                }
+                if (simplification_case == 4) {
+                    gate_indices_to_remove.push_back(pos1);
+                    gate_indices_to_remove.push_back(pos2);
+                    break;
                 }
             } else {
                 break;

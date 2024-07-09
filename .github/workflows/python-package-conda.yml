@@ -13,27 +13,37 @@ jobs:
       with:
         submodules: 'true'    
 
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - name: Install lcov
+      run: sudo apt-get update && sudo apt-get install -y lcov
+
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v2
       with:
-        python-version: '3.10'
+        auto-update-conda: true  # Ensure conda is updated to the latest version
+        miniforge-variant: "Mambaforge"
 
-    - name: Add conda to system path
+    - name: Create conda environment
       run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
+        source /usr/share/miniconda3/etc/profile.d/conda.sh
+        conda env create --file environment.yml --name qforte_env
+        echo "CONDA_ENV_NAME=qforte_env" >> $GITHUB_ENV
 
-    - name: Install dependencies
+    - name: Run pre-commit on all files
       run: |
-        conda env update --file environment.yml --name base
-        conda install psi4 -c psi4/label/dev
+        source /usr/share/miniconda3/etc/profile.d/conda.sh
+        conda activate $CONDA_ENV_NAME
+        pre-commit run --all-files
 
     - name: Compile
       run: |
+        source /usr/share/miniconda3/etc/profile.d/conda.sh
+        conda activate $CONDA_ENV_NAME
         QFORTE_CODECOV=ON python setup.py develop
         
     - name: Test with pytest
       run: |
+        source /usr/share/miniconda3/etc/profile.d/conda.sh
+        conda activate $CONDA_ENV_NAME
         lcov --directory . --zerocounters
         cd tests
         pytest

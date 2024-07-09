@@ -77,21 +77,6 @@ class ADAPTVQE(UCCVQE):
     _results : list
         The optimizer result objects from each iteration of ADAPT-VQE.
     """
-<<<<<<< HEAD
-    def run(self,
-            avqe_thresh=1.0e-2,
-            pool_type='sa_SD',
-            opt_thresh=1.0e-5,
-            opt_maxiter=200,
-            adapt_maxiter=20,
-            optimizer='BFGS',
-            use_analytic_grad = True,
-            use_cumulative_thresh = False,
-            add_equiv_ops = False,
-            pre_tops_tamps = None
-            ):
-=======
->>>>>>> master
 
     def run(
         self,
@@ -104,6 +89,7 @@ class ADAPTVQE(UCCVQE):
         use_analytic_grad=True,
         use_cumulative_thresh=False,
         add_equiv_ops=False,
+        pre_tops_tamps=None
     ):
         self._avqe_thresh = avqe_thresh
         self._opt_thresh = opt_thresh
@@ -195,7 +181,6 @@ class ADAPTVQE(UCCVQE):
             )
 
         while not self._converged:
-<<<<<<< HEAD
 
             print('\n\n -----> ADAPT-VQE iteration ', avqe_iter, ' <-----\n')
             if self._use_aux_pool and self._penalty is not None:
@@ -211,9 +196,6 @@ class ADAPTVQE(UCCVQE):
                         self._Nl = len(self._qb_ham.terms())
                         self._is_qb_ham_init = False
 
-=======
-            print("\n\n -----> ADAPT-VQE iteration ", avqe_iter, " <-----\n")
->>>>>>> master
             self.update_ansatz()
 
             if self._converged:
@@ -534,7 +516,6 @@ class ADAPTVQE(UCCVQE):
     def conv_status(self):
         """Sets the convergence states."""
         if abs(self._curr_grad_norm) < abs(self._avqe_thresh):
-<<<<<<< HEAD
             if not self._use_aux_pool:
                 self._converged = True
                 self._final_energy = self._energies[-1]
@@ -553,12 +534,6 @@ class ADAPTVQE(UCCVQE):
                     print("-----------------------------------------------------------")
                     print(F"SA finished... Now switching to aux at ITER {self._pool_switch_iter}")
                     print("-----------------------------------------------------------")
-=======
-            self._converged = True
-            self._final_energy = self._energies[-1]
-            if self._optimizer.lower() != "jacobi":
-                self._final_result = self._results[-1]
->>>>>>> master
         else:
             self._converged = False
             # if self._use_aux_pool:

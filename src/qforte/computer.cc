@@ -37,12 +37,12 @@ Computer::Computer(int nqubit, double print_threshold)
     coeff_[0] = 1.;
 }
 
-std::complex<double> Computer::coeff(const QubitBasis& basis) { return coeff_[basis.add()]; }
+std::complex<double> Computer::coeff(const QubitBasis& basis) { return coeff_[basis.index()]; }
 
 void Computer::set_state(std::vector<std::pair<QubitBasis, double_c>> state) {
     std::fill(coeff_.begin(), coeff_.end(), 0.0);
     for (const auto& basis_c : state) {
-        coeff_[basis_c.first.add()] = basis_c.second;
+        coeff_[basis_c.first.index()] = basis_c.second;
     }
 }
 
@@ -328,7 +328,7 @@ void Computer::apply_1qubit_gate_safe(const Gate& qg) {
                     if (basis_J.get_bit(target) == j) {
                         QubitBasis basis_I = basis_J;
                         basis_I.set_bit(target, i);
-                        new_coeff_[basis_I.add()] += op_i_j * coeff_[basis_J.add()];
+                        new_coeff_[basis_I.index()] += op_i_j * coeff_[basis_J.index()];
                     }
                 }
             }
@@ -445,7 +445,7 @@ void Computer::apply_2qubit_gate_safe(const Gate& qg) {
                         QubitBasis basis_I = basis_J;
                         basis_I.set_bit(control, i_c);
                         basis_I.set_bit(target, i_t);
-                        new_coeff_[basis_I.add()] += op_i_j * coeff_[basis_J.add()];
+                        new_coeff_[basis_I.index()] += op_i_j * coeff_[basis_J.index()];
                     }
                 }
             }
@@ -634,8 +634,11 @@ void Computer::apply_2qubit_gate(const Gate& qg) {
                 // Case II: this matrix has no off-diagonal elements. Apply optimized algorithm
                 if (op_2_2 != 1.0) {
                     // Case II-A: changes portion of coeff_ only if g_00 is not 1.0
-                    for (int outer_block_start = 0; outer_block_start < nbasis_; outer_block_start += outer_block_offset) {
-                        for (int block_start = outer_block_start + block_size; block_start < outer_block_start + outer_block_size; block_start += block_offset) {
+                    for (int outer_block_start = 0; outer_block_start < nbasis_;
+                         outer_block_start += outer_block_offset) {
+                        for (int block_start = outer_block_start + block_size;
+                             block_start < outer_block_start + outer_block_size;
+                             block_start += block_offset) {
                             for (int I0 = block_start; I0 < block_start + block_size; ++I0) {
                                 coeff_[I0] = op_2_2 * coeff_[I0];
                             }
@@ -735,7 +738,7 @@ void Computer::apply_2qubit_gate(const Gate& qg) {
                             QubitBasis basis_I = basis_J;
                             basis_I.set_bit(control, i_c);
                             basis_I.set_bit(target, i_t);
-                            new_coeff_[basis_I.add()] += op_i_j * coeff_[basis_J.add()];
+                            new_coeff_[basis_I.index()] += op_i_j * coeff_[basis_J.index()];
                         }
                     }
                 }
@@ -871,7 +874,7 @@ std::complex<double> Computer::direct_pauli_circ_exp_val(const Circuit& qc) {
     std::vector<int> y_idxs;
     std::vector<int> z_idxs;
 
-    for (const Gate& gate : qc.gates()) {
+    for (const auto& gate : qc.gates()) {
         if (gate.target() < min_qb_idx) {
             min_qb_idx = gate.target();
         }
@@ -891,16 +894,14 @@ std::complex<double> Computer::direct_pauli_circ_exp_val(const Circuit& qc) {
 
 #pragma omp parallel for reduction(+ : result)
     for (size_t n = 0; n < n_blocks; n++) {
-        int I1 = n * block_size;
-        int I2 = I1 + block_size;
+        size_t I1 = n * block_size;
+        size_t I2 = I1 + block_size;
 
-        std::pair<int, std::complex<double>> pauli_perms =
-            get_pauli_permuted_idx(I1, x_idxs, y_idxs, z_idxs);
+        auto pauli_perms = get_pauli_permuted_idx(I1, x_idxs, y_idxs, z_idxs);
 
-        std::vector<std::complex<double>>::iterator it1 = std::next(coeff_.begin(), I1);
-        std::vector<std::complex<double>>::iterator it2 = std::next(coeff_.begin(), I2);
-        std::vector<std::complex<double>>::iterator it3 =
-            std::next(coeff_.begin(), pauli_perms.first);
+        auto it1 = std::next(coeff_.begin(), I1);
+        auto it2 = std::next(coeff_.begin(), I2);
+        auto it3 = std::next(coeff_.begin(), pauli_perms.first);
 
         result +=
             pauli_perms.second * std::inner_product(it1, it2, it3, std::complex<double>(0.0, 0.0),
@@ -909,7 +910,7 @@ std::complex<double> Computer::direct_pauli_circ_exp_val(const Circuit& qc) {
     return result;
 }
 
-std::pair<int, std::complex<double>>
+std::pair<size_t, std::complex<double>>
 Computer::get_pauli_permuted_idx(size_t I, const std::vector<int>& x_idxs,
                                  const std::vector<int>& y_idxs, const std::vector<int>& z_idxs) {
 
@@ -930,7 +931,7 @@ Computer::get_pauli_permuted_idx(size_t I, const std::vector<int>& x_idxs,
         val *= (1.0 - 2.0 * basis_I.get_bit(zi));
     }
 
-    return std::make_pair(basis_I.add(), val);
+    return std::make_pair(basis_I.index(), val);
 }
 
 std::complex<double> Computer::direct_gate_exp_val(const Gate& qg) {

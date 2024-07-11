@@ -290,7 +290,16 @@ class AnsatzAlgorithm(Algorithm):
     def fill_pool(self):
         """This function populates an operator pool with SQOperator objects."""
 
-        if self._pool_type in {"sa_GSD", "sa_SD", "GSD", "SD", "SDT", "SDTQ", "SDTQP", "SDTQPH"}:
+        if self._pool_type in {
+            "sa_GSD",
+            "sa_SD",
+            "GSD",
+            "SD",
+            "SDT",
+            "SDTQ",
+            "SDTQP",
+            "SDTQPH",
+        }:
             self._pool_obj = qf.SQOpPool()
             if hasattr(self._sys, "orb_irreps_to_int"):
                 self._pool_obj.set_orb_spaces(self._ref, self._sys.orb_irreps_to_int)

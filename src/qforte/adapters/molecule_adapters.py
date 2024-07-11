@@ -2,6 +2,7 @@
 A class for building molecular object adapters. Adapters for various approaches to build
 the molecular info and properties (hamiltonian, rdms, etc...).
 """
+
 import operator
 import numpy as np
 from abc import ABC, abstractmethod

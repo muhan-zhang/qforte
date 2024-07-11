@@ -179,16 +179,27 @@ class UCCVQE(UCC, VQE):
             Kmu.mult_coeffs(self._pool_obj[self._tops[mu]][0])
 
             if self._compact_excitations:
-                if self._pool_type == "sa_GSD" and len(self._pool_obj[self._tops[mu + 1]][1].terms()) > 2:
+                if (
+                    self._pool_type == "sa_GSD"
+                    and len(self._pool_obj[self._tops[mu + 1]][1].terms()) > 2
+                ):
                     Umu = qf.Circuit()
-                    Umu.add(compact_excitation_circuit(-tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[2][0],
-                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[2][1],
-                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[2][2],
-                                                               self._qubit_excitations))
-                    Umu.add(compact_excitation_circuit(-tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[3][0],
-                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[3][1],
-                                                               self._pool_obj[self._tops[mu + 1]][1].terms()[3][2],
-                                                               self._qubit_excitations))
+                    Umu.add(
+                        compact_excitation_circuit(
+                            -tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[2][0],
+                            self._pool_obj[self._tops[mu + 1]][1].terms()[2][1],
+                            self._pool_obj[self._tops[mu + 1]][1].terms()[2][2],
+                            self._qubit_excitations,
+                        )
+                    )
+                    Umu.add(
+                        compact_excitation_circuit(
+                            -tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[3][0],
+                            self._pool_obj[self._tops[mu + 1]][1].terms()[3][1],
+                            self._pool_obj[self._tops[mu + 1]][1].terms()[3][2],
+                            self._qubit_excitations,
+                        )
+                    )
                 elif self._pool_type == "sa_SD":
                     sa_sq_op = self._pool_obj[self._tops[mu + 1]][1].terms()
                     half_length = len(sa_sq_op) // 2
@@ -211,7 +222,7 @@ class UCCVQE(UCC, VQE):
                             -tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[1][0],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[1][1],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[1][2],
-                            self._qubit_excitations
+                            self._qubit_excitations,
                         )
                     )
             else:

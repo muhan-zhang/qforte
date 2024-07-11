@@ -61,19 +61,31 @@ class UCC(Trotterizable):
             U = qf.Circuit()
             for tamp, sq_op in temp_pool:
                 if self._pool_type == "sa_GSD" and len(sq_op.terms()) > 2:
-                    U.add(compact_excitation_circuit(tamp * sq_op.terms()[2][0],
-                                                            sq_op.terms()[2][1],
-                                                            sq_op.terms()[2][2],
-                                                            self._qubit_excitations))
-                    U.add(compact_excitation_circuit(tamp * sq_op.terms()[3][0],
-                                                            sq_op.terms()[3][1],
-                                                            sq_op.terms()[3][2],
-                                                            self._qubit_excitations))
+                    U.add(
+                        compact_excitation_circuit(
+                            tamp * sq_op.terms()[2][0],
+                            sq_op.terms()[2][1],
+                            sq_op.terms()[2][2],
+                            self._qubit_excitations,
+                        )
+                    )
+                    U.add(
+                        compact_excitation_circuit(
+                            tamp * sq_op.terms()[3][0],
+                            sq_op.terms()[3][1],
+                            sq_op.terms()[3][2],
+                            self._qubit_excitations,
+                        )
+                    )
                 else:
-                    U.add(compact_excitation_circuit(tamp * sq_op.terms()[1][0],
-                                                            sq_op.terms()[1][1],
-                                                            sq_op.terms()[1][2],
-                                                            self._qubit_excitations))
+                    U.add(
+                        compact_excitation_circuit(
+                            tamp * sq_op.terms()[1][0],
+                            sq_op.terms()[1][1],
+                            sq_op.terms()[1][2],
+                            self._qubit_excitations,
+                        )
+                    )
             return U
 
         A = temp_pool.get_qubit_operator(

@@ -89,7 +89,7 @@ class ADAPTVQE(UCCVQE):
         use_analytic_grad=True,
         use_cumulative_thresh=False,
         add_equiv_ops=False,
-        pre_tops_tamps=None
+        pre_tops_tamps=None,
     ):
         self._avqe_thresh = avqe_thresh
         self._opt_thresh = opt_thresh
@@ -182,7 +182,7 @@ class ADAPTVQE(UCCVQE):
 
         while not self._converged:
 
-            print('\n\n -----> ADAPT-VQE iteration ', avqe_iter, ' <-----\n')
+            print("\n\n -----> ADAPT-VQE iteration ", avqe_iter, " <-----\n")
             if self._use_aux_pool and self._penalty is not None:
                 if not self._is_sa_converged:
                     if not self._is_qb_ham_init:
@@ -448,11 +448,11 @@ class ADAPTVQE(UCCVQE):
         grads = self.measure_gradient3()
 
         for m, grad_m in enumerate(grads):
-            
+
             if self._use_aux_pool:
                 if not self._is_sa_converged:
                     if m >= self._nsaop:
-                        continue # main pool
+                        continue  # main pool
 
             # refers to number of times sigma_y must be measured in "strategies for UCC" grad eval circuit
             self._n_pauli_measures_k += self._Nl * self._Nm[m]
@@ -519,20 +519,22 @@ class ADAPTVQE(UCCVQE):
             if not self._use_aux_pool:
                 self._converged = True
                 self._final_energy = self._energies[-1]
-                if self._optimizer.lower() != 'jacobi':
+                if self._optimizer.lower() != "jacobi":
                     self._final_result = self._results[-1]
             else:
                 if self._is_sa_converged:
                     self._converged = True
                     self._final_energy = self._energies[-1]
-                    if self._optimizer.lower() != 'jacobi':
+                    if self._optimizer.lower() != "jacobi":
                         self._final_result = self._results[-1]
                 else:
                     self._is_sa_converged = True
                     self._converged = False
                     self._pool_switch_iter = len(self._energies)
                     print("-----------------------------------------------------------")
-                    print(F"SA finished... Now switching to aux at ITER {self._pool_switch_iter}")
+                    print(
+                        f"SA finished... Now switching to aux at ITER {self._pool_switch_iter}"
+                    )
                     print("-----------------------------------------------------------")
         else:
             self._converged = False

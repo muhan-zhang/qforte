@@ -181,7 +181,6 @@ class ADAPTVQE(UCCVQE):
             )
 
         while not self._converged:
-
             print("\n\n -----> ADAPT-VQE iteration ", avqe_iter, " <-----\n")
             if self._use_aux_pool and self._penalty is not None:
                 if not self._is_sa_converged:
@@ -448,7 +447,6 @@ class ADAPTVQE(UCCVQE):
         grads = self.measure_gradient3()
 
         for m, grad_m in enumerate(grads):
-
             if self._use_aux_pool:
                 if not self._is_sa_converged:
                     if m >= self._nsaop:

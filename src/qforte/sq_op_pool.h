@@ -68,8 +68,8 @@ class SQOpPool {
     int n_vir_beta_;
 
     /// the number of spin-adapted operators
-    int nsaop_=0;
-    
+    int nsaop_ = 0;
+
     /// the list of integers representing the irreps of the orbitals
     std::vector<size_t> orb_irreps_to_int_;
 

@@ -5,6 +5,7 @@ The abstract base classes inherited by all algorithm subclasses.
 """
 
 from abc import ABC, abstractmethod
+import math
 import qforte as qf
 from qforte.utils.state_prep import *
 from qforte.abc.mixin import Trotterizable
@@ -329,11 +330,25 @@ class AnsatzAlgorithm(Algorithm):
             if computer is None:
                 computer = qf.Computer(self._nqb)
             computer.apply_circuit(Ucirc)
-            val = np.real(computer.direct_op_exp_val(self._qb_ham))
+            if self._projection is None:
+                val = np.real(computer.direct_op_exp_val(self._qb_ham))
+            else:
+                P_exp = np.real(computer.direct_op_exp_val(self._projection.get("projector")))
+                rcomp = qf.Computer(computer)
+                rcomp.apply_operator(self._projection.get("projector"))
+                rcomp.apply_operator(self._qb_ham)
+                HP_exp = np.real(
+                    np.vdot(computer.get_coeff_vec(), rcomp.get_coeff_vec())
+                )
+                val = HP_exp / P_exp
         else:
             if compute is not None:
                 raise TypeError(
                     "measure_energy in slow mode does not support custom Computer."
+                )
+            if self._projection is not None:
+                raise TypeError(
+                    "measure_energy in slow mode does not support projection operator."
                 )
             Exp = qforte.Experiment(self._nqb, Ucirc, self._qb_ham, 2000)
             val = Exp.perfect_experimental_avg()
@@ -351,6 +366,7 @@ class AnsatzAlgorithm(Algorithm):
         max_moment_rank=0,
         moment_dt=None,
         penalty=None,
+        projection=None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -370,6 +386,7 @@ class AnsatzAlgorithm(Algorithm):
         # The moment_dt variable defines the 'residual' state used to measure the residuals for the moment corrections
         self._moment_dt = moment_dt
         self._penalty = penalty
+        self._projection = projection
 
         if self._penalty is not None:
             if isinstance(self, qf.UCCNPQE) or isinstance(self, qf.SPQE):
@@ -433,6 +450,101 @@ class AnsatzAlgorithm(Algorithm):
             self._qb_ham.add(penalties_qop)
             self._qb_ham.simplify(True)
             self._Nl = len(self._qb_ham.terms())
+
+        if self._projection is not None:
+            if isinstance(self, qf.UCCNPQE) or isinstance(self, qf.SPQE):
+                raise ValueError(
+                    "PQE with Hamiltonian projection terms not yet supported."
+                )
+            expected_keys = {"nbetas", "target_s", "target_ms"}
+            if not isinstance(self._projection, dict):
+                raise ValueError(
+                    f"The 'projection' option must be a dictionary with keys: {expected_keys}"
+                )
+            if not set(self._projection.keys()) == expected_keys:
+                raise ValueError(
+                    f"Incorrect keys in 'projection' dictionary. Expected keys: {expected_keys}"
+                )
+            if not all(isinstance(value, int) for value in self._projection.values()):
+                raise ValueError(
+                    "All values in the 'projection' dictionary must be integers."
+                )
+
+            proj_npoints = self._projection.get("nbetas")
+            gl_quad_points, gl_quad_weights = np.polynomial.legendre.leggauss(proj_npoints)
+            self._projection.update({
+                "gl_quad_points": gl_quad_points,
+                "gl_quad_weights": gl_quad_weights
+            })
+
+            betas = []
+            small_ds = []
+            target_s = self._projection.get("target_s")
+            target_ms = self._projection.get("target_ms")
+            projector = qf.QubitOperator()
+
+            # NOTE: the following code block is to generate projection operator (projector).
+            #       However, the projector generated is only for specific evaluations with a caveat
+            #       to project an arbitrary state to a non-Sz-symmetry-adapted space.
+            #       This a priori simplifies calculations of energy expval and energy gradients
+            #       In order to maintain the original functionality of projector, one should
+            #       implement trapezoidal quadrature for Euler angle alpha, gamma integration.
+            #       Some remnants of trapz alpha, gamma are commented here for potential reference.
+
+            # ntrapz = self._projection.get("ntrapz")
+            # intvl = 2 * math.pi / (ntrapz - 1)
+            
+            for (pt, wG) in zip(self._projection.get("gl_quad_points"), 
+                                self._projection.get("gl_quad_weights")):
+                # alpha = intvl * ida # trapezoidal quad
+                beta = math.pi - math.acos(pt) # Gauss-Legendre quad
+                # gamma = intvl * idg # trapezoidal quad
+
+                # NOTE: wigner small d calculation -- real number
+                jmax = min(target_s + target_ms, target_s - target_ms)
+                small_d = 0.0
+                for j in range(jmax + 1):
+                    small_d += ((-1)**j) * (math.cos(beta / 2.)**(2. * (target_s - j))) \
+                    * (math.sin(beta / 2.)**(2. * j)) / math.factorial(target_s + target_ms - j) \
+                    / (math.factorial(j)**2) / math.factorial(target_s - target_ms - j)
+                small_d *= math.factorial(target_s + target_ms) * math.factorial(target_s - target_ms)
+                        
+                # NOTE: weight of each Ug
+                #       defined by Euler angle integration, wigner small d, quadrature
+                wg = (target_s + 0.5) * small_d * wG # / (ntrapz - 1)**2 \
+                #    * complex(math.cos(alpha * target_ms), math.sin(alpha * target_ms)) \
+                #    * complex(math.cos(gamma * target_ms), math.sin(gamma * target_ms)) \
+
+                # NOTE: Unitary unit for summation
+                Ug = qf.Circuit()
+                # NOTE: exp(-i gamma Sz)
+                # for ig in range(0, len(self._ref), 2):
+                #     Ug.add(qf.gate("Rz", ig, ig, -gamma / 2))
+                #     Ug.add(qf.gate("Rz", ig + 1, ig + 1, gamma / 2))
+                # NOTE: exp(-i beta Sy) -- equivalent to spin flips
+                for ib in range(0, len(self._ref), 2):
+                    Ug.add(
+                        qf.compact_excitation_circuit(
+                            beta / 2.,
+                            [ib + 1],
+                            [ib],
+                            self._qubit_excitations
+                        )
+                    )
+                # NOTE: exp(-i alpha Sz)
+                # for ia in range(0, len(self._ref), 2):
+                #     Ug.add(qf.gate("Rz", ia, ia, -alpha / 2))
+                #     Ug.add(qf.gate("Rz", ia + 1, ia + 1, alpha / 2))
+
+                betas.append(beta)
+                small_ds.append(small_d)
+                projector.add_term(wg, Ug)
+                
+            self._projection.update({
+                "betas": betas,
+                "small_ds": small_ds,
+                "projector": projector,
+            })
 
         kwargs.setdefault("irrep", None)
         if hasattr(self._sys, "point_group"):

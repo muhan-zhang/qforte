@@ -146,6 +146,12 @@ class UCCVQE(UCC, VQE):
         qc_psi.apply_circuit(Utot)
         qc_sig = qf.Computer(qc_psi)
         qc_sig.apply_operator(self._qb_ham)
+        if self._projection is not None:
+            Energy = self.energy_feval(params)
+            P_exp = np.real(qc_psi.direct_op_exp_val(self._projection.get("projector")))
+            qc_sig.apply_operator(self._projection.get("projector"))
+            qc_pro = qf.Computer(qc_psi)
+            qc_pro.apply_operator(self._projection.get("projector"))
         qc_temp = qf.Computer(qc_psi)
 
         mu = M - 1
@@ -157,9 +163,18 @@ class UCCVQE(UCC, VQE):
         Kmu_prev.mult_coeffs(self._pool_obj[self._tops[mu]][0])
 
         qc_temp.apply_operator(Kmu_prev)
-        grads[mu] = 2.0 * np.real(
-            np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
-        )
+        if self._projection is not None:
+            HP_grad = 2.0 * np.real(
+                np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
+            )
+            P_grad = 2.0 * np.real(
+                np.vdot(qc_pro.get_coeff_vec(), qc_temp.get_coeff_vec())
+            )
+            grads[mu] = (HP_grad - Energy * P_grad) / P_exp
+        else:
+            grads[mu] = 2.0 * np.real(
+                np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
+            )
 
         for mu in reversed(range(M - 1)):
             qc_temp = qf.Computer(qc_psi)
@@ -257,12 +272,23 @@ class UCCVQE(UCC, VQE):
 
             qc_sig.apply_circuit(Umu)
             qc_psi.apply_circuit(Umu)
-            qc_temp = qf.Computer(qc_psi)
 
+            qc_temp = qf.Computer(qc_psi)
             qc_temp.apply_operator(Kmu)
-            grads[mu] = 2.0 * np.real(
-                np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
-            )
+
+            if self._projection is not None:
+                qc_pro.apply_circuit(Umu)
+                HP_grad = 2.0 * np.real(
+                    np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
+                )
+                P_grad = 2.0 * np.real(
+                    np.vdot(qc_pro.get_coeff_vec(), qc_temp.get_coeff_vec())
+                )
+                grads[mu] = (HP_grad - Energy * P_grad) / P_exp
+            else:
+                grads[mu] = 2.0 * np.real(
+                    np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
+                )
 
             # reset Kmu |psi_i> -> |psi_i>
             Kmu_prev = Kmu
@@ -285,8 +311,29 @@ class UCCVQE(UCC, VQE):
         qc_psi = self.get_initial_computer()
         qc_psi.apply_circuit(Utot)
 
-        qc_sig = qforte.Computer(qc_psi)
-        qc_sig.apply_operator(self._qb_ham)
+        # qc_sig = qforte.Computer(qc_psi)
+        # qc_sig.apply_operator(self._qb_ham)
+
+        if self._projection is not None:
+            P = self._projection.get("projector")
+            P_adj = self._projection.get("projector_adj")
+
+            Energy = self.energy_feval(self._tamps)
+
+            H_shifted = qf.QubitOperator()
+            H_shifted.add(self._qb_ham)
+            H_shifted.add(-Energy, qf.Circuit())
+
+            qc_sig = qforte.Computer(qc_psi)
+            qc_sig.apply_operator(P)
+            qc_sig.apply_operator(H_shifted)
+
+            P_exp = np.real(
+                qc_psi.direct_op_exp_val(P)
+            )
+        else:
+            qc_sig = qforte.Computer(qc_psi)
+            qc_sig.apply_operator(self._qb_ham)
 
         grads = np.zeros(len(self._pool_obj))
 
@@ -298,6 +345,8 @@ class UCCVQE(UCC, VQE):
             grads[mu] = 2.0 * np.real(
                 np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
             )
+            if self._projection is not None:
+                grads[mu] /= P_exp
 
         np.testing.assert_allclose(np.imag(grads), np.zeros_like(grads), atol=1e-7)
 

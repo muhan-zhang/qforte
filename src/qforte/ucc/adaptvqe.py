@@ -156,6 +156,12 @@ class ADAPTVQE(UCCVQE):
             if self._penalty is not None:
                 penalties_temp_qop = self._qb_ham
                 self._is_qb_ham_init = False
+            if self._projection is not None:
+                proj_dict = self._projection.copy()
+                self._is_proj_init = False
+                self._use_projection = True # flag variable to check if projection is used or not
+            else:
+                self._use_projection = False
 
         if self._max_moment_rank:
             print("\nConstructing Moller-Plesset and Epstein-Nesbet denominators")
@@ -182,18 +188,29 @@ class ADAPTVQE(UCCVQE):
 
         while not self._converged:
             print("\n\n -----> ADAPT-VQE iteration ", avqe_iter, " <-----\n")
-            if self._use_aux_pool and self._penalty is not None:
-                if not self._is_sa_converged:
-                    if not self._is_qb_ham_init:
-                        self._qb_ham = qf.QubitOperator()
-                        self._qb_ham.add(self._sys.hamiltonian)
-                        self._Nl = len(self._qb_ham.terms())
-                        self._is_qb_ham_init = True
-                else:
-                    if self._is_qb_ham_init:
-                        self._qb_ham = penalties_temp_qop
-                        self._Nl = len(self._qb_ham.terms())
-                        self._is_qb_ham_init = False
+            if self._use_aux_pool: 
+                if self._penalty is not None:
+                    if not self._is_sa_converged:
+                        if not self._is_qb_ham_init:
+                            self._qb_ham = qf.QubitOperator()
+                            self._qb_ham.add(self._sys.hamiltonian)
+                            self._Nl = len(self._qb_ham.terms())
+                            self._is_qb_ham_init = True
+                    else:
+                        if self._is_qb_ham_init:
+                            self._qb_ham = penalties_temp_qop
+                            self._Nl = len(self._qb_ham.terms())
+                            self._is_qb_ham_init = False
+                if self._use_projection is True:
+                    if not self._is_sa_converged:
+                        if not self._is_proj_init:
+                            self._projection = None
+                            self._is_proj_init = True
+                    else:
+                        if self._is_proj_init:
+                            self._projection = proj_dict.copy()
+                            self._Nl *= self._projection.get("nbetas")
+                            self._is_proj_init = False
 
             self.update_ansatz()
 

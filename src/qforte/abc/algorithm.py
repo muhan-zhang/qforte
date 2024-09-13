@@ -333,7 +333,9 @@ class AnsatzAlgorithm(Algorithm):
             if self._projection is None:
                 val = np.real(computer.direct_op_exp_val(self._qb_ham))
             else:
-                P_exp = np.real(computer.direct_op_exp_val(self._projection.get("projector")))
+                P_exp = np.real(
+                    computer.direct_op_exp_val(self._projection.get("projector"))
+                )
                 rcomp = qf.Computer(computer)
                 rcomp.apply_operator(self._projection.get("projector"))
                 rcomp.apply_operator(self._qb_ham)
@@ -471,11 +473,12 @@ class AnsatzAlgorithm(Algorithm):
                 )
 
             proj_npoints = self._projection.get("nbetas")
-            gl_quad_points, gl_quad_weights = np.polynomial.legendre.leggauss(proj_npoints)
-            self._projection.update({
-                "gl_quad_points": gl_quad_points,
-                "gl_quad_weights": gl_quad_weights
-            })
+            gl_quad_points, gl_quad_weights = np.polynomial.legendre.leggauss(
+                proj_npoints
+            )
+            self._projection.update(
+                {"gl_quad_points": gl_quad_points, "gl_quad_weights": gl_quad_weights}
+            )
 
             betas = []
             small_ds = []
@@ -493,25 +496,34 @@ class AnsatzAlgorithm(Algorithm):
 
             # ntrapz = self._projection.get("ntrapz")
             # intvl = 2 * math.pi / (ntrapz - 1)
-            
-            for (pt, wG) in zip(self._projection.get("gl_quad_points"), 
-                                self._projection.get("gl_quad_weights")):
+
+            for pt, wG in zip(
+                self._projection.get("gl_quad_points"),
+                self._projection.get("gl_quad_weights"),
+            ):
                 # alpha = intvl * ida # trapezoidal quad
-                beta = math.pi - math.acos(pt) # Gauss-Legendre quad
+                beta = math.pi - math.acos(pt)  # Gauss-Legendre quad
                 # gamma = intvl * idg # trapezoidal quad
 
                 # NOTE: wigner small d calculation -- real number
                 jmax = min(target_s + target_ms, target_s - target_ms)
                 small_d = 0.0
                 for j in range(jmax + 1):
-                    small_d += ((-1)**j) * (math.cos(beta / 2.)**(2. * (target_s - j))) \
-                    * (math.sin(beta / 2.)**(2. * j)) / math.factorial(target_s + target_ms - j) \
-                    / (math.factorial(j)**2) / math.factorial(target_s - target_ms - j)
-                small_d *= math.factorial(target_s + target_ms) * math.factorial(target_s - target_ms)
-                        
+                    small_d += (
+                        ((-1) ** j)
+                        * (math.cos(beta / 2.0) ** (2.0 * (target_s - j)))
+                        * (math.sin(beta / 2.0) ** (2.0 * j))
+                        / math.factorial(target_s + target_ms - j)
+                        / (math.factorial(j) ** 2)
+                        / math.factorial(target_s - target_ms - j)
+                    )
+                small_d *= math.factorial(target_s + target_ms) * math.factorial(
+                    target_s - target_ms
+                )
+
                 # NOTE: weight of each Ug
                 #       defined by Euler angle integration, wigner small d, quadrature
-                wg = (target_s + 0.5) * small_d * wG # / (ntrapz - 1)**2 \
+                wg = (target_s + 0.5) * small_d * wG  # / (ntrapz - 1)**2 \
                 #    * complex(math.cos(alpha * target_ms), math.sin(alpha * target_ms)) \
                 #    * complex(math.cos(gamma * target_ms), math.sin(gamma * target_ms)) \
 
@@ -525,10 +537,7 @@ class AnsatzAlgorithm(Algorithm):
                 for ib in range(0, len(self._ref), 2):
                     Ug.add(
                         qf.compact_excitation_circuit(
-                            beta / 2.,
-                            [ib + 1],
-                            [ib],
-                            self._qubit_excitations
+                            beta / 2.0, [ib + 1], [ib], self._qubit_excitations
                         )
                     )
                 # NOTE: exp(-i alpha Sz)
@@ -539,12 +548,14 @@ class AnsatzAlgorithm(Algorithm):
                 betas.append(beta)
                 small_ds.append(small_d)
                 projector.add_term(wg, Ug)
-                
-            self._projection.update({
-                "betas": betas,
-                "small_ds": small_ds,
-                "projector": projector,
-            })
+
+            self._projection.update(
+                {
+                    "betas": betas,
+                    "small_ds": small_ds,
+                    "projector": projector,
+                }
+            )
 
         kwargs.setdefault("irrep", None)
         if hasattr(self._sys, "point_group"):

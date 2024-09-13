@@ -328,9 +328,7 @@ class UCCVQE(UCC, VQE):
             qc_sig.apply_operator(P)
             qc_sig.apply_operator(H_shifted)
 
-            P_exp = np.real(
-                qc_psi.direct_op_exp_val(P)
-            )
+            P_exp = np.real(qc_psi.direct_op_exp_val(P))
         else:
             qc_sig = qforte.Computer(qc_psi)
             qc_sig.apply_operator(self._qb_ham)

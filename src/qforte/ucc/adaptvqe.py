@@ -159,7 +159,9 @@ class ADAPTVQE(UCCVQE):
             if self._projection is not None:
                 proj_dict = self._projection.copy()
                 self._is_proj_init = False
-                self._use_projection = True # flag variable to check if projection is used or not
+                self._use_projection = (
+                    True  # flag variable to check if projection is used or not
+                )
             else:
                 self._use_projection = False
 
@@ -188,7 +190,7 @@ class ADAPTVQE(UCCVQE):
 
         while not self._converged:
             print("\n\n -----> ADAPT-VQE iteration ", avqe_iter, " <-----\n")
-            if self._use_aux_pool: 
+            if self._use_aux_pool:
                 if self._penalty is not None:
                     if not self._is_sa_converged:
                         if not self._is_qb_ham_init:

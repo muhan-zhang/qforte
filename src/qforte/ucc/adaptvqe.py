@@ -90,6 +90,7 @@ class ADAPTVQE(UCCVQE):
         use_cumulative_thresh=False,
         add_equiv_ops=False,
         pre_tops_tamps=None,
+        track_op=None
     ):
         self._avqe_thresh = avqe_thresh
         self._opt_thresh = opt_thresh
@@ -107,12 +108,13 @@ class ADAPTVQE(UCCVQE):
         self._pool_type = pool_type
         self._use_cumulative_thresh = use_cumulative_thresh
         self._add_equiv_ops = add_equiv_ops
-        # self._pla_thres = pla_thres
+        self._track_op = track_op # dict keys: operator (qf.QubitOperator), track_stddev (bool)
 
         if self._pool_type == "sa_GSD":
             self._use_aux_pool = True
         else:
             self._use_aux_pool = False
+            self._pool_switch_iter = 0
 
         self._results = []
         self._energies = []
@@ -153,18 +155,26 @@ class ADAPTVQE(UCCVQE):
         if self._use_aux_pool:
             self._nsaop = self._pool_obj.get_nsaop()
             self._is_sa_converged = False
+            self._pool_switch_prep = False
             if self._penalty is not None:
-                penalties_temp_qop = self._qb_ham
-                self._is_qb_ham_init = False
+                penalties_temp_qop = qf.QubitOperator()
+                penalties_temp_qop.add(self._qb_ham)
+                self._qb_ham = qf.QubitOperator()
+                self._qb_ham.add(self._sys.hamiltonian)
+                self._Nl = len(self._qb_ham.terms())
             if self._projection is not None:
                 proj_dict = self._projection.copy()
-                self._is_proj_init = False
-                self._use_projection = (
-                    True  # flag variable to check if projection is used or not
-                )
+                self._Nl = len(self._qb_ham.terms())
+                self._use_projection = True  # flag var to check if proj is used or not
+                self._projection = None
             else:
                 self._use_projection = False
 
+        if self._track_op is not None:
+            print("\nTracking operator-related evolutions")
+            self._track_op.update({"expvals": []})
+            if self._track_op.get("track_stddev"):
+                self._track_op.update({"stddevs": []})
         if self._max_moment_rank:
             print("\nConstructing Moller-Plesset and Epstein-Nesbet denominators")
             self.construct_moment_space()
@@ -190,31 +200,18 @@ class ADAPTVQE(UCCVQE):
 
         while not self._converged:
             print("\n\n -----> ADAPT-VQE iteration ", avqe_iter, " <-----\n")
-            if self._use_aux_pool:
-                if self._penalty is not None:
-                    if not self._is_sa_converged:
-                        if not self._is_qb_ham_init:
-                            self._qb_ham = qf.QubitOperator()
-                            self._qb_ham.add(self._sys.hamiltonian)
-                            self._Nl = len(self._qb_ham.terms())
-                            self._is_qb_ham_init = True
-                    else:
-                        if self._is_qb_ham_init:
-                            self._qb_ham = penalties_temp_qop
-                            self._Nl = len(self._qb_ham.terms())
-                            self._is_qb_ham_init = False
-                if self._use_projection is True:
-                    if not self._is_sa_converged:
-                        if not self._is_proj_init:
-                            self._projection = None
-                            self._is_proj_init = True
-                    else:
-                        if self._is_proj_init:
-                            self._projection = proj_dict.copy()
-                            self._Nl *= self._projection.get("nbetas")
-                            self._is_proj_init = False
 
-            self.update_ansatz()
+            is_updated = self.update_ansatz()
+            if not is_updated:
+                if self._use_aux_pool and (not self._pool_switch_prep):
+                    if self._penalty is not None:
+                        self._qb_ham = penalties_temp_qop
+                        self._Nl = len(self._qb_ham.terms())
+                    if self._use_projection:
+                        self._projection = proj_dict.copy()
+                        self._Nl = len(self._qb_ham.terms()) * self._projection.get("nbetas")
+                    self._pool_switch_prep = True
+                continue
 
             if self._converged:
                 break
@@ -225,9 +222,14 @@ class ADAPTVQE(UCCVQE):
 
             self.solve()
             self._tamps_per_cycle.append(copy.deepcopy(self._tamps))
-
-            # if self._use_aux_pool:
-            #     init_energy = self.check_plateau(init_energy)
+            if self._track_op is not None:
+                op_expval = self.track_op_exp_val()
+                self._track_op["expvals"].append(op_expval)
+                print("\nExpectation value of user-provided operator at current iteration: ", op_expval)
+                if self._track_op.get("track_stddev"):
+                    op_stddev = self.track_op_std_dev(op_expval)
+                    self._track_op["stddevs"].append(op_stddev)
+                    print("Standard deviation of user-provided operator at current iteration: ", op_stddev)
 
             if self._max_moment_rank:
                 print("\nComputing non-iterative energy corrections")
@@ -260,17 +262,30 @@ class ADAPTVQE(UCCVQE):
 
         print("\n\n")
         if not self._max_moment_rank:
-            print(
-                f"{'Iter':>8}{'E':>14}{'N(params)':>17}{'N(CNOT)':>18}{'N(measure)':>20}"
-            )
-            print(
-                "-------------------------------------------------------------------------------"
-            )
-
-            for k, Ek in enumerate(self._energies):
+            if self._projection is None:
                 print(
-                    f" {k:7}    {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
+                    f"{'Iter':>8}{'E':>14}{'N(params)':>17}{'N(CNOT)':>18}{'N(measure)':>20}"
                 )
+                print(
+                    "-------------------------------------------------------------------------------"
+                )
+
+                for k, Ek in enumerate(self._energies):
+                    print(
+                        f" {k:7}{'*' if self._use_aux_pool and k == self._pool_switch_iter else ' '}    {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
+                    )
+            else:
+                print(
+                    f"{'Iter':>8}{'E':>14}{'N(params)':>17}{'N(CNOT)':>18}{'N(CNOT) (Proj)':>18}{'N(measure)':>20}"
+                )
+                print(
+                    "--------------------------------------------------------------------------------------------------"
+                )
+
+                for k, Ek in enumerate(self._energies):
+                    print(
+                        f" {k:7}{'*' if self._use_aux_pool and k == self._pool_switch_iter else ' '}   {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {self._n_cnot_lst[k] + self._projection.get("n_cnot_proj") if k >= self._pool_switch_iter else self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
+                    )
 
         else:
             print(
@@ -433,17 +448,6 @@ class ADAPTVQE(UCCVQE):
         self._n_pauli_trm_measures_lst.append(self._n_pauli_measures_k)
         self._n_cnot_lst.append(self.build_Uvqc().get_num_cnots())
 
-    # Define plateau checking
-    # def check_plateau(self, init_energy):
-    #     """
-    #     """
-    #     energy_diff = abs(self._energies[-1] - init_energy)
-    #     if energy_diff < self._pla_thres:
-    #         self._is_sa_converged = True
-    #     else:
-    #         self._is_sa_converged = False
-    #     return copy.deepcopy(self._energies[-1])
-
     # Define ADAPT-VQE methods.
     def update_ansatz(self):
         """Adds a parameter and operator to the ADAPT-VQE circuit based on the
@@ -451,6 +455,9 @@ class ADAPTVQE(UCCVQE):
         convergence.
         """
         self._n_pauli_measures_k = 0
+
+        if self._use_aux_pool:
+            is_prev_sa_converged = self._is_sa_converged
 
         curr_norm = 0.0
         lgrst_grad = 0.0
@@ -497,6 +504,8 @@ class ADAPTVQE(UCCVQE):
         self._grad_norms.append(curr_norm)
 
         self.conv_status()
+        if self._use_aux_pool and is_prev_sa_converged != self._is_sa_converged:
+            return False
 
         if not self._converged:
             if self._use_cumulative_thresh:
@@ -529,6 +538,47 @@ class ADAPTVQE(UCCVQE):
 
         else:
             print("\n  ADAPT-VQE converged!")
+        
+        return True
+
+    def track_op_exp_val(self):
+        """Calculates operator expectation value at each macro-iteration."""
+        comp = self.get_initial_computer()
+        Uvqc = self.build_Uvqc(self._tamps)
+        comp.apply_circuit(Uvqc)
+        if self._projection is not None:
+            rcomp = qf.Computer(comp)
+            rcomp.apply_operator(self._projection.get("projector"))
+            rcomp.apply_operator(self._track_op.get("operator"))
+            P_expval = comp.direct_op_exp_val(self._projection.get("projector"))
+            oP_expval = np.vdot(comp.get_coeff_vec(), rcomp.get_coeff_vec())
+            o_expval = np.real(oP_expval / P_expval)
+        else:
+            o_expval = np.real(comp.direct_op_exp_val(self._track_op.get("operator")))
+        return o_expval
+    
+    def track_op_std_dev(self, o_expval):
+        """Calculates operator standard deviation at each macro-iteration."""
+        comp = self.get_initial_computer()
+        Uvqc = self.build_Uvqc(self._tamps)
+        comp.apply_circuit(Uvqc)
+
+        rcomp = qf.Computer(comp)
+        if self._projection is not None:
+            P_expval = comp.direct_op_exp_val(self._projection.get("projector"))
+            rcomp.apply_operator(self._projection.get("projector"))
+        rcomp.apply_operator(self._track_op.get("operator"))
+        rcomp.apply_operator(self._track_op.get("operator"))
+
+        if self._projection is not None:
+            o2_expval = np.vdot(comp.get_coeff_vec(), rcomp.get_coeff_vec()) / P_expval
+        else:
+            o2_expval = np.vdot(comp.get_coeff_vec(), rcomp.get_coeff_vec())
+
+        o_var = np.real(o2_expval - o_expval**2)
+        if o_var <= 1e-14:
+            o_var = 0.0
+        return np.sqrt(o_var)
 
     def conv_status(self):
         """Sets the convergence states."""
@@ -550,7 +600,7 @@ class ADAPTVQE(UCCVQE):
                     self._pool_switch_iter = len(self._energies)
                     print("-----------------------------------------------------------")
                     print(
-                        f"SA finished... Now switching to aux at ITER {self._pool_switch_iter}"
+                        f"DP-MAIN finished. Now switching to DP-FULL at ITER {self._pool_switch_iter}."
                     )
                     print("-----------------------------------------------------------")
         else:

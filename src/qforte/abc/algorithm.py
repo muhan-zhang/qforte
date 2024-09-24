@@ -484,6 +484,8 @@ class AnsatzAlgorithm(Algorithm):
             small_ds = []
             target_s = self._projection.get("target_s")
             target_ms = self._projection.get("target_ms")
+            n_cnot_proj = int(int(self._nqb / 2) * 8) # 8 by controlled-Rz with one ancilla qubit
+            self._Nl = len(self._qb_ham.terms()) * self._projection.get("nbetas")
             projector = qf.QubitOperator()
 
             # NOTE: the following code block is to generate projection operator (projector).
@@ -530,18 +532,18 @@ class AnsatzAlgorithm(Algorithm):
                 # NOTE: Unitary unit for summation
                 Ug = qf.Circuit()
                 # NOTE: exp(-i gamma Sz)
-                # for ig in range(0, len(self._ref), 2):
+                # for ig in range(0, self._nqb, 2):
                 #     Ug.add(qf.gate("Rz", ig, ig, -gamma / 2))
                 #     Ug.add(qf.gate("Rz", ig + 1, ig + 1, gamma / 2))
                 # NOTE: exp(-i beta Sy) -- equivalent to spin flips
-                for ib in range(0, len(self._ref), 2):
+                for ib in range(0, self._nqb, 2):
                     Ug.add(
                         qf.compact_excitation_circuit(
                             beta / 2.0, [ib + 1], [ib], self._qubit_excitations
                         )
                     )
                 # NOTE: exp(-i alpha Sz)
-                # for ia in range(0, len(self._ref), 2):
+                # for ia in range(0, self._nqb, 2):
                 #     Ug.add(qf.gate("Rz", ia, ia, -alpha / 2))
                 #     Ug.add(qf.gate("Rz", ia + 1, ia + 1, alpha / 2))
 
@@ -554,6 +556,7 @@ class AnsatzAlgorithm(Algorithm):
                     "betas": betas,
                     "small_ds": small_ds,
                     "projector": projector,
+                    "n_cnot_proj": n_cnot_proj
                 }
             )
 

@@ -90,7 +90,7 @@ class ADAPTVQE(UCCVQE):
         use_cumulative_thresh=False,
         add_equiv_ops=False,
         pre_tops_tamps=None,
-        track_op=None
+        track_op=None,
     ):
         self._avqe_thresh = avqe_thresh
         self._opt_thresh = opt_thresh
@@ -108,7 +108,9 @@ class ADAPTVQE(UCCVQE):
         self._pool_type = pool_type
         self._use_cumulative_thresh = use_cumulative_thresh
         self._add_equiv_ops = add_equiv_ops
-        self._track_op = track_op # dict keys: operator (qf.QubitOperator), track_stddev (bool)
+        self._track_op = (
+            track_op  # dict keys: operator (qf.QubitOperator), track_stddev (bool)
+        )
 
         if self._pool_type == "sa_GSD":
             self._use_aux_pool = True
@@ -209,7 +211,9 @@ class ADAPTVQE(UCCVQE):
                         self._Nl = len(self._qb_ham.terms())
                     if self._use_projection:
                         self._projection = proj_dict.copy()
-                        self._Nl = len(self._qb_ham.terms()) * self._projection.get("nbetas")
+                        self._Nl = len(self._qb_ham.terms()) * self._projection.get(
+                            "nbetas"
+                        )
                     self._pool_switch_prep = True
                 continue
 
@@ -225,11 +229,17 @@ class ADAPTVQE(UCCVQE):
             if self._track_op is not None:
                 op_expval = self.track_op_exp_val()
                 self._track_op["expvals"].append(op_expval)
-                print("\nExpectation value of user-provided operator at current iteration: ", op_expval)
+                print(
+                    "\nExpectation value of user-provided operator at current iteration: ",
+                    op_expval,
+                )
                 if self._track_op.get("track_stddev"):
                     op_stddev = self.track_op_std_dev(op_expval)
                     self._track_op["stddevs"].append(op_stddev)
-                    print("Standard deviation of user-provided operator at current iteration: ", op_stddev)
+                    print(
+                        "Standard deviation of user-provided operator at current iteration: ",
+                        op_stddev,
+                    )
 
             if self._max_moment_rank:
                 print("\nComputing non-iterative energy corrections")
@@ -538,7 +548,7 @@ class ADAPTVQE(UCCVQE):
 
         else:
             print("\n  ADAPT-VQE converged!")
-        
+
         return True
 
     def track_op_exp_val(self):
@@ -556,7 +566,7 @@ class ADAPTVQE(UCCVQE):
         else:
             o_expval = np.real(comp.direct_op_exp_val(self._track_op.get("operator")))
         return o_expval
-    
+
     def track_op_std_dev(self, o_expval):
         """Calculates operator standard deviation at each macro-iteration."""
         comp = self.get_initial_computer()

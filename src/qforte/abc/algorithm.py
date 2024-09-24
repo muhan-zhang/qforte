@@ -484,7 +484,9 @@ class AnsatzAlgorithm(Algorithm):
             small_ds = []
             target_s = self._projection.get("target_s")
             target_ms = self._projection.get("target_ms")
-            n_cnot_proj = int(int(self._nqb / 2) * 8) # 8 by controlled-Rz with one ancilla qubit
+            n_cnot_proj = int(
+                int(self._nqb / 2) * 8
+            )  # 8 by controlled-Rz with one ancilla qubit
             self._Nl = len(self._qb_ham.terms()) * self._projection.get("nbetas")
             projector = qf.QubitOperator()
 
@@ -556,7 +558,7 @@ class AnsatzAlgorithm(Algorithm):
                     "betas": betas,
                     "small_ds": small_ds,
                     "projector": projector,
-                    "n_cnot_proj": n_cnot_proj
+                    "n_cnot_proj": n_cnot_proj,
                 }
             )
 

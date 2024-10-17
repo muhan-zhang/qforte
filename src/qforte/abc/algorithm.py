@@ -467,10 +467,10 @@ class AnsatzAlgorithm(Algorithm):
                 raise ValueError(
                     f"Incorrect keys in 'projection' dictionary. Expected keys: {expected_keys}"
                 )
-            if not all(isinstance(value, int) for value in self._projection.values()):
-                raise ValueError(
-                    "All values in the 'projection' dictionary must be integers."
-                )
+            # if not all(isinstance(value, int) for value in self._projection.values()):
+            #     raise ValueError(
+            #         "All values in the 'projection' dictionary must be integers."
+            #     )
 
             proj_npoints = self._projection.get("nbetas")
             gl_quad_points, gl_quad_weights = np.polynomial.legendre.leggauss(
@@ -512,17 +512,17 @@ class AnsatzAlgorithm(Algorithm):
                 # NOTE: wigner small d calculation -- real number
                 jmax = min(target_s + target_ms, target_s - target_ms)
                 small_d = 0.0
-                for j in range(jmax + 1):
+                for j in range(int(jmax) + 1):
                     small_d += (
                         ((-1) ** j)
                         * (math.cos(beta / 2.0) ** (2.0 * (target_s - j)))
                         * (math.sin(beta / 2.0) ** (2.0 * j))
-                        / math.factorial(target_s + target_ms - j)
+                        / math.factorial(int(target_s + target_ms - j))
                         / (math.factorial(j) ** 2)
-                        / math.factorial(target_s - target_ms - j)
+                        / math.factorial(int(target_s - target_ms - j))
                     )
-                small_d *= math.factorial(target_s + target_ms) * math.factorial(
-                    target_s - target_ms
+                small_d *= math.factorial(int(target_s + target_ms)) * math.factorial(
+                    int(target_s - target_ms)
                 )
 
                 # NOTE: weight of each Ug

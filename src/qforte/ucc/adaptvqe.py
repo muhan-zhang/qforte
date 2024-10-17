@@ -116,7 +116,7 @@ class ADAPTVQE(UCCVQE):
             self._use_aux_pool = True
         else:
             self._use_aux_pool = False
-            self._pool_switch_iter = 0
+        self._pool_switch_iter = -1
 
         self._results = []
         self._energies = []
@@ -267,6 +267,9 @@ class ADAPTVQE(UCCVQE):
             self._Egs = self.get_final_energy(hit_max_avqe_iter=1)
             if self._optimizer.lower() != "jacobi":
                 self._final_result = self._results[-1]
+            if self._use_aux_pool:
+                if self._use_projection:
+                    self._projection = proj_dict.copy()
 
         self._Egs = self.get_final_energy()
 
@@ -282,7 +285,7 @@ class ADAPTVQE(UCCVQE):
 
                 for k, Ek in enumerate(self._energies):
                     print(
-                        f" {k:7}{'*' if self._use_aux_pool and k == self._pool_switch_iter else ' '}    {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
+                        f" {k:7}{'*' if k == self._pool_switch_iter else ' '}    {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
                     )
             else:
                 print(
@@ -294,7 +297,7 @@ class ADAPTVQE(UCCVQE):
 
                 for k, Ek in enumerate(self._energies):
                     print(
-                        f" {k:7}{'*' if self._use_aux_pool and k == self._pool_switch_iter else ' '}   {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {self._n_cnot_lst[k] + self._projection.get('n_cnot_proj') if k >= self._pool_switch_iter else self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
+                        f" {k:7}{'*' if k == self._pool_switch_iter else ' '}   {Ek:+15.9f}    {self._n_classical_params_lst[k]:8}        {self._n_cnot_lst[k]:10}        {self._n_cnot_lst[k] + self._projection.get('n_cnot_proj') if k >= self._pool_switch_iter else self._n_cnot_lst[k]:10}        {sum(self._n_pauli_trm_measures_lst[:k+1]):12}"
                     )
 
         else:

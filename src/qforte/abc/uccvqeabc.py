@@ -148,19 +148,37 @@ class UCCVQE(UCC, VQE):
         qc_sig.apply_operator(self._qb_ham)
         if self._projection is not None:
             Energy = self.energy_feval(params)
-            P_exp = np.real(qc_psi.direct_op_exp_val(self._projection.get("projector")))
-            qc_sig.apply_operator(self._projection.get("projector"))
             qc_pro = qf.Computer(qc_psi)
-            qc_pro.apply_operator(self._projection.get("projector"))
+            for p_op in self._projection.get("projector"):
+                qc_sig.apply_operator(p_op)
+                qc_pro.apply_operator(p_op)
+            P_exp = np.real(np.vdot(qc_pro.get_coeff_vec(), qc_psi.get_coeff_vec()))
         qc_temp = qf.Computer(qc_psi)
 
         mu = M - 1
 
         # find <sing_N | K_N | psi_N>
-        Kmu_prev = self._pool_obj[self._tops[mu]][1].jw_transform(
-            self._qubit_excitations
-        )
-        Kmu_prev.mult_coeffs(self._pool_obj[self._tops[mu]][0])
+        if self._pool_type in {"sdoy0z", "symoy0z"}:
+            Kmu_prev = qf.QubitOperator()
+            Kmu_prev.add(self._pool_obj[self._tops[mu]][1])
+            Kmu_prev.mult_coeffs(self._pool_obj[self._tops[mu]][0] * 1.0j)
+        elif not self._approx_compact_excitations:
+            Kmu_prev = self._pool_obj[self._tops[mu]][1].jw_transform(
+                self._qubit_excitations
+            )
+            Kmu_prev.mult_coeffs(self._pool_obj[self._tops[mu]][0])
+        else:
+            Kmu_prev = qf.QubitOperator()
+            Kmu_prev.add_term(
+                self._pool_obj[self._tops[mu]][0] * self._pool_obj[self._tops[mu]][1].terms()[1][0],
+                compact_excitation_circuit(
+                    np.pi / 2,
+                    self._pool_obj[self._tops[mu]][1].terms()[1][1],
+                    self._pool_obj[self._tops[mu]][1].terms()[1][2],
+                    self._qubit_excitations,
+                    self._approx_compact_excitations,
+                )
+            )
 
         qc_temp.apply_operator(Kmu_prev)
         if self._projection is not None:
@@ -188,14 +206,31 @@ class UCCVQE(UCC, VQE):
             else:
                 tamp = params[mu + 1]
 
-            Kmu = self._pool_obj[self._tops[mu]][1].jw_transform(
-                self._qubit_excitations
-            )
-            Kmu.mult_coeffs(self._pool_obj[self._tops[mu]][0])
+            if self._pool_type in {"sdoy0z", "symoy0z"}:
+                Kmu = qf.QubitOperator()
+                Kmu.add(self._pool_obj[self._tops[mu]][1])
+                Kmu.mult_coeffs(self._pool_obj[self._tops[mu]][0] * 1.0j)
+            elif not self._approx_compact_excitations:
+                Kmu = self._pool_obj[self._tops[mu]][1].jw_transform(
+                    self._qubit_excitations
+                )
+                Kmu.mult_coeffs(self._pool_obj[self._tops[mu]][0])
+            else:
+                Kmu = qf.QubitOperator()
+                Kmu.add_term(
+                    self._pool_obj[self._tops[mu]][0] * self._pool_obj[self._tops[mu]][1].terms()[1][0],
+                    compact_excitation_circuit(
+                        np.pi / 2,
+                        self._pool_obj[self._tops[mu]][1].terms()[1][1],
+                        self._pool_obj[self._tops[mu]][1].terms()[1][2],
+                        self._qubit_excitations,
+                        self._approx_compact_excitations,
+                    )
+                )
 
             if self._compact_excitations:
                 if (
-                    self._pool_type == "sa_GSD"
+                    self._pool_type != "sa_SD"
                     and len(self._pool_obj[self._tops[mu + 1]][1].terms()) > 2
                 ):
                     Umu = qf.Circuit()
@@ -225,7 +260,9 @@ class UCCVQE(UCC, VQE):
                         # In this particular case, the minus sign is already incorporated
                         Umu.add(
                             compact_excitation_circuit(
-                                tamp * coeff, ann, cr, self._qubit_excitations
+                                tamp * coeff, ann, cr, 
+                                self._qubit_excitations, 
+                                self._approx_compact_excitations,
                             )
                         )
                 else:
@@ -238,6 +275,7 @@ class UCCVQE(UCC, VQE):
                             self._pool_obj[self._tops[mu + 1]][1].terms()[1][1],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[1][2],
                             self._qubit_excitations,
+                            self._approx_compact_excitations,
                         )
                     )
             else:
@@ -315,9 +353,6 @@ class UCCVQE(UCC, VQE):
         # qc_sig.apply_operator(self._qb_ham)
 
         if self._projection is not None:
-            P = self._projection.get("projector")
-            P_adj = self._projection.get("projector_adj")
-
             Energy = self.energy_feval(self._tamps)
 
             H_shifted = qf.QubitOperator()
@@ -325,10 +360,10 @@ class UCCVQE(UCC, VQE):
             H_shifted.add(-Energy, qf.Circuit())
 
             qc_sig = qforte.Computer(qc_psi)
-            qc_sig.apply_operator(P)
+            for p_op in self._projection.get("projector"):
+                qc_sig.apply_operator(p_op)
+            P_exp = np.real(np.vdot(qc_psi.get_coeff_vec(), qc_sig.get_coeff_vec()))
             qc_sig.apply_operator(H_shifted)
-
-            P_exp = np.real(qc_psi.direct_op_exp_val(P))
         else:
             qc_sig = qforte.Computer(qc_psi)
             qc_sig.apply_operator(self._qb_ham)
@@ -337,9 +372,23 @@ class UCCVQE(UCC, VQE):
 
         for mu, (coeff, operator) in enumerate(self._pool_obj):
             qc_temp = qf.Computer(qc_psi)
-            Kmu = operator.jw_transform(self._qubit_excitations)
-            Kmu.mult_coeffs(coeff)
-            qc_temp.apply_operator(Kmu)
+            if self._pool_type in {"sdoy0z", "symoy0z"}:
+                Kmu = qf.QubitOperator()
+                Kmu.add(operator)
+                Kmu.mult_coeffs(coeff * 1.0j)
+                qc_temp.apply_operator(Kmu)
+            elif not self._approx_compact_excitations:
+                Kmu = operator.jw_transform(self._qubit_excitations)
+                Kmu.mult_coeffs(coeff)
+                qc_temp.apply_operator(Kmu)
+            else:
+                qc_temp.apply_circuit(compact_excitation_circuit(
+                    np.pi / 2,
+                    operator.terms()[1][1],
+                    operator.terms()[1][2],
+                    self._qubit_excitations,
+                    self._approx_compact_excitations,
+                ))
             grads[mu] = 2.0 * np.real(
                 np.vdot(qc_sig.get_coeff_vec(), qc_temp.get_coeff_vec())
             )

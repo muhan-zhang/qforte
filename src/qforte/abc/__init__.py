@@ -1,4 +1,5 @@
 from .algorithm import *
+from .heansatz import TiledUPS
 from .qsdabc import *
 
 from .vqeabc import *

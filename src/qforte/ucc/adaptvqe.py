@@ -347,6 +347,7 @@ class ADAPTVQE(UCCVQE):
 
         print("Use qubit excitations:                   ", self._qubit_excitations)
         print("Use compact excitation circuits:         ", self._compact_excitations)
+        print("Use approximate compact excitations:     ", self._approx_compact_excitations)
 
         # VQE options.
         opt_thrsh_str = "{:.2e}".format(self._opt_thresh)
@@ -561,9 +562,11 @@ class ADAPTVQE(UCCVQE):
         comp.apply_circuit(Uvqc)
         if self._projection is not None:
             rcomp = qf.Computer(comp)
-            rcomp.apply_operator(self._projection.get("projector"))
+            for p_op in self._projection.get("projector"):
+                rcomp.apply_operator(p_op)
+            P_expval = np.vdot(comp.get_coeff_vec(), rcomp.get_coeff_vec())
+
             rcomp.apply_operator(self._track_op.get("operator"))
-            P_expval = comp.direct_op_exp_val(self._projection.get("projector"))
             oP_expval = np.vdot(comp.get_coeff_vec(), rcomp.get_coeff_vec())
             o_expval = np.real(oP_expval / P_expval)
         else:
@@ -578,8 +581,9 @@ class ADAPTVQE(UCCVQE):
 
         rcomp = qf.Computer(comp)
         if self._projection is not None:
-            P_expval = comp.direct_op_exp_val(self._projection.get("projector"))
-            rcomp.apply_operator(self._projection.get("projector"))
+            for p_op in self._projection.get("projector"):
+                rcomp.apply_operator(p_op)
+            P_expval = np.vdot(comp.get_coeff_vec(), rcomp.get_coeff_vec())
         rcomp.apply_operator(self._track_op.get("operator"))
         rcomp.apply_operator(self._track_op.get("operator"))
 

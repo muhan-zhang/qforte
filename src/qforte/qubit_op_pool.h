@@ -35,6 +35,10 @@ class QubitOpPool {
     /// return a vector of QubitOperators multiplied by thier coefficients
     const std::vector<std::pair<std::complex<double>, QubitOperator>>& operator_terms() const;
 
+    /// set the point group symmetry (spatial-orbital-wise)
+    void set_orb_spaces(const size_t nqb,
+                        const std::vector<size_t>& orb_irreps_to_int = {});
+
     /// join an operator to all terms from the right as (i.e. term -> term*Op)
     /// without simplifying
     void join_op_from_right_lazy(const QubitOperator& q_op);
@@ -58,11 +62,17 @@ class QubitOpPool {
     std::string str() const;
 
   private:
+    /// the list of integers representing the irreps of the orbitals
+    std::vector<size_t> orb_irreps_to_int_;
+
     /// the list of sq operators in the pool
     std::vector<std::pair<std::complex<double>, QubitOperator>> terms_;
 
     /// returns a string representing I in base 4
     std::string to_base4(int I);
+
+    /// returns a string representing I in base 3 (no Z gate)
+    std::string to_base3(int I);
 
     /// fixes the number of preceding zeros in I_str based on nqb
     std::string pauli_idx_str(std::string I_str, int nqb);

@@ -5,6 +5,7 @@
 #include "sq_operator.h"
 #include "sq_op_pool.h"
 #include "qubit_op_pool.h"
+#include "find_irrep.h"
 
 #include <stdexcept>
 #include <algorithm>
@@ -44,6 +45,15 @@ void QubitOpPool::set_terms(
 
 const std::vector<std::pair<std::complex<double>, QubitOperator>>& QubitOpPool::terms() const {
     return terms_;
+}
+
+void QubitOpPool::set_orb_spaces(const size_t nqb, 
+                                 const std::vector<size_t>& orb_irreps_to_int) {
+    if (orb_irreps_to_int.empty()) {
+        orb_irreps_to_int_ = std::vector<size_t>(nqb / 2, 0);
+    } else {
+        orb_irreps_to_int_ = orb_irreps_to_int;
+    }
 }
 
 void QubitOpPool::square(bool upper_triangle_only) {
@@ -169,6 +179,78 @@ void QubitOpPool::fill_pool(std::string pool_type, const size_t nqb) {
                 add_term(1.0, AI);
             }
         }
+    } else if (pool_type == "sdoy0z") {
+        std::map<std::string, std::string> paulis = {
+            {"0", "I"}, {"1", "X"}, {"2", "Y"}};
+        int nterms = static_cast<int>(std::pow(3, nqb));
+
+        for (int I = 0; I < nterms; I++) {
+            QubitOperator AI;
+            Circuit aI;
+            auto paulistr = pauli_idx_str(to_base3(I), nqb);
+            if (paulistr.length() != nqb) {
+                throw std::invalid_argument("paulistr.length() != nqb");
+            }
+            int nygates = 0;
+            int ngates = 0;
+            std::vector<size_t> idgates;
+            for (size_t k = 0; k < nqb; k++) {
+                if (paulistr.substr(k, 1) == "2") {
+                    nygates++;
+                }
+                if (paulistr.substr(k, 1) != "0") {
+                    aI.add_gate(make_gate(paulis[paulistr.substr(k, 1)], k, k));
+                    ngates++;
+                    idgates.push_back(k);
+                }
+            }
+            if (nygates % 2 != 0 && ngates <= 4 && !find_irrep(orb_irreps_to_int_, idgates)) {
+                AI.add_term(1.0, aI);
+                add_term(1.0, AI);
+            }
+        }
+    } else if (pool_type == "symoy0z") {
+        std::map<std::string, std::string> paulis = {
+            {"0", "I"}, {"1", "X"}, {"2", "Y"}};
+        int nterms = static_cast<int>(std::pow(3, nqb));
+
+        for (int I = 0; I < nterms; I++) {
+            QubitOperator AI;
+            Circuit aI;
+            auto paulistr = pauli_idx_str(to_base3(I), nqb);
+            if (paulistr.length() != nqb) {
+                throw std::invalid_argument("paulistr.length() != nqb");
+            }
+            int nygates = 0;
+            int nalpha_xygates = 0;
+            int nbeta_xygates = 0;
+            int ngates = 0;
+            std::vector<size_t> idgates;
+            for (size_t k = 0; k < nqb; k++) {
+                if (paulistr.substr(k, 1) == "2") {
+                    nygates++;
+                }
+                if (paulistr.substr(k, 1) != "0") {
+                    if (k % 2 == 0) {
+                        nalpha_xygates++;
+                    }
+                    else {
+                        nbeta_xygates++;
+                    }
+                    aI.add_gate(make_gate(paulis[paulistr.substr(k, 1)], k, k));
+                    ngates++;
+                    idgates.push_back(k);
+                }
+            }
+            if (nygates % 2 != 0 && 
+                ngates <= 4 && 
+                nalpha_xygates % 2 == 0 && 
+                nbeta_xygates % 2 == 0 && 
+                !find_irrep(orb_irreps_to_int_, idgates)) {
+                AI.add_term(1.0, aI);
+                add_term(1.0, AI);
+            }
+        }
     } else {
         throw std::invalid_argument("Invalid pool_type specified.");
     }
@@ -198,6 +280,15 @@ std::string QubitOpPool::to_base4(int I) {
         return convert_str.substr(I, 1);
     } else {
         return to_base4(std::floor(I / 4)) + convert_str.substr(I % 4, 1);
+    }
+}
+
+std::string QubitOpPool::to_base3(int I) {
+    std::string convert_str = "0123456789";
+    if (I < 3) {
+        return convert_str.substr(I, 1);
+    } else {
+        return to_base3(std::floor(I / 3)) + convert_str.substr(I % 3, 1);
     }
 }
 

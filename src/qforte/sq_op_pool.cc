@@ -878,38 +878,251 @@ void SQOpPool::fill_pool(std::string pool_type) {
                 }
             }
         }
+    } else if (pool_type == "tUPS"){
+        size_t norb = n_occ_alpha_ + n_vir_alpha_;
 
-        // pair quadraple excitation
-        // for (size_t i=0; i<norb; i++){
-        //     size_t ia = 2*i;
-        //     size_t ib = 2*i+1;
+        // first half layer -- no spatial symmetry
+        for (size_t i = 0; i + 1 < norb; i += 2) {
+            size_t ia = 2 * i;
+            size_t ib = 2 * i + 1;
 
-        //     for (size_t j=i+1; j<norb; j++){
-        //         size_t ja = 2*j;
-        //         size_t jb = 2*j+1;
+            size_t aa = 2 * i + 2;
+            size_t ab = 2 * i + 3;
 
-        //         for (size_t a=j+1; a<norb; a++){
-        //             size_t aa = 2*a;
-        //             size_t ab = 2*a+1;
+            // spin-adapted single excitation
+            SQOperator temp1;
+            temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
 
-        //             for (size_t b=a+1; b<norb; b++){
-        //                 size_t ba = 2*b;
-        //                 size_t bb = 2*b+1;
+            temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
 
-        //                 SQOperator temp4;
-        //                 temp4.add_term(+1.0, \
-        //                                {aa,ab,ba,bb},\
-        //                                {ia,ib,ja,jb});
-        //                 temp4.add_term(-1.0, \
-        //                                {ia,ib,ja,jb},\
-        //                                {aa,ab,ba,bb});
+            temp1.simplify();
+            add_term(1.0, temp1);
 
-        //                 temp4.simplify();
-        //                 add_term(1.0, temp4);
-        //             }
-        //         }
-        //     }
-        // }
+            // perfect-pairing double excitation
+            SQOperator temp2;
+            temp2.add_term(+1.0, {aa, ab}, {ia, ib});
+            temp2.add_term(-1.0, {ia, ib}, {aa, ab});
+            temp2.simplify();
+            add_term(1.0, temp2);
+
+            // spin-adapted single excitation
+            SQOperator temp3;
+            temp3.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp3.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp3.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp3.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp3.simplify();
+            add_term(1.0, temp3);
+        }
+
+        // second half layer -- no spatial symmetry
+        for (size_t i = 1; i + 1 < norb; i += 2) {
+            size_t ia = 2 * i;
+            size_t ib = 2 * i + 1;
+
+            size_t aa = 2 * i + 2;
+            size_t ab = 2 * i + 3;
+
+            // spin-adapted single excitation
+            SQOperator temp1;
+            temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp1.simplify();
+            add_term(1.0, temp1);
+
+            // perfect-pairing double excitation
+            SQOperator temp2;
+            temp2.add_term(+1.0, {aa, ab}, {ia, ib});
+            temp2.add_term(-1.0, {ia, ib}, {aa, ab});
+            temp2.simplify();
+            add_term(1.0, temp2);
+
+            // spin-adapted single excitation
+            SQOperator temp3;
+            temp3.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp3.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp3.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp3.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp3.simplify();
+            add_term(1.0, temp3);
+        }
+    } else if (pool_type == "oo"){
+        size_t norb = n_occ_alpha_ + n_vir_alpha_;
+        size_t halflayeri = 0;
+        while (halflayeri < norb){
+            // first half layer
+            for (size_t i = 0; i + 1 < norb; i += 2){
+                size_t ia = 2 * i;
+                size_t ib = 2 * i + 1;
+
+                size_t aa = 2 * i + 2;
+                size_t ab = 2 * i + 3;
+
+                // spin-adapted single excitation
+                SQOperator temp1;
+                temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+                temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+                temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+                temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+                temp1.simplify();
+                add_term(1.0, temp1);
+            }
+            halflayeri++;
+            if (halflayeri >= norb){
+                break; // get out of loop if number of layers is half integer
+            }
+
+            // second half layer
+            for (size_t i = 1; i + 1 < norb; i += 2){
+                size_t ia = 2 * i;
+                size_t ib = 2 * i + 1;
+
+                size_t aa = 2 * i + 2;
+                size_t ab = 2 * i + 3;
+
+                // spin-adapted single excitation
+                SQOperator temp1;
+                temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+                temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+                temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+                temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+                temp1.simplify();
+                add_term(1.0, temp1);
+            }
+            halflayeri++;
+        }
+    } else if (pool_type == "pp"){
+        size_t norb = n_occ_alpha_ + n_vir_alpha_;
+        size_t halfnorb = norb / 2;
+        size_t rmd = norb % 2;
+
+        // first half layer -- no spatial symmetry
+        for (size_t i = 0; i < halfnorb; i++) {
+            size_t ia = 2 * i;
+            size_t ib = 2 * i + 1;
+
+            size_t aa = 2 * (i + halfnorb);
+            size_t ab = 2 * (i + halfnorb) + 1;
+
+            // spin-adapted single excitation
+            SQOperator temp1;
+            temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp1.simplify();
+            add_term(1.0, temp1);
+
+            // perfect-pairing double excitation
+            SQOperator temp2;
+            temp2.add_term(+1.0, {aa, ab}, {ia, ib});
+            temp2.add_term(-1.0, {ia, ib}, {aa, ab});
+            temp2.simplify();
+            add_term(1.0, temp2);
+
+            // spin-adapted single excitation
+            SQOperator temp3;
+            temp3.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp3.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp3.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp3.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp3.simplify();
+            add_term(1.0, temp3);
+        }
+
+        // second half layer -- no spatial symmetry
+        for (size_t i = 0; i < halfnorb - 1; i++) {
+            size_t ia = 2 * (i + halfnorb);
+            size_t ib = 2 * (i + halfnorb) + 1;
+
+            size_t aa = 2 * i + 2;
+            size_t ab = 2 * i + 3;
+
+            // spin-adapted single excitation
+            SQOperator temp1;
+            temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp1.simplify();
+            add_term(1.0, temp1);
+
+            // perfect-pairing double excitation
+            SQOperator temp2;
+            temp2.add_term(+1.0, {aa, ab}, {ia, ib});
+            temp2.add_term(-1.0, {ia, ib}, {aa, ab});
+            temp2.simplify();
+            add_term(1.0, temp2);
+
+            // spin-adapted single excitation
+            SQOperator temp3;
+            temp3.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp3.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp3.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp3.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp3.simplify();
+            add_term(1.0, temp3);
+        }
+
+        // if remainder
+        if (rmd == 1) {
+            size_t ia = 2 * (norb - 2);
+            size_t ib = 2 * (norb - 2) + 1;
+
+            size_t aa = 2 * (norb - 1);
+            size_t ab = 2 * (norb - 1) + 1;
+
+            // spin-adapted single excitation
+            SQOperator temp1;
+            temp1.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp1.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp1.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp1.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp1.simplify();
+            add_term(1.0, temp1);
+
+            // perfect-pairing double excitation
+            SQOperator temp2;
+            temp2.add_term(+1.0, {aa, ab}, {ia, ib});
+            temp2.add_term(-1.0, {ia, ib}, {aa, ab});
+            temp2.simplify();
+            add_term(1.0, temp2);
+
+            // spin-adapted single excitation
+            SQOperator temp3;
+            temp3.add_term(+1.0 / std::sqrt(2), {aa}, {ia});
+            temp3.add_term(+1.0 / std::sqrt(2), {ab}, {ib});
+
+            temp3.add_term(-1.0 / std::sqrt(2), {ia}, {aa});
+            temp3.add_term(-1.0 / std::sqrt(2), {ib}, {ab});
+
+            temp3.simplify();
+            add_term(1.0, temp3);
+        }
     } else {
         throw std::invalid_argument("Invalid pool_type specified.");
     }

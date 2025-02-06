@@ -6,7 +6,8 @@ import qforte as qf
 import numpy as np
 
 
-def compact_excitation_circuit(theta, creation, annihilation, qubit_excitations):
+def compact_excitation_circuit(theta, creation, annihilation, qubit_excitations, 
+    approx=False):
     """
     This function constructs compact quantum circuits for fermionic/qubit
     excitations of the form
@@ -81,6 +82,7 @@ def compact_excitation_circuit(theta, creation, annihilation, qubit_excitations)
             gsd_control,
             gsd_sign,
             qubit_excitations,
+            approx,
         )
     )
 
@@ -150,7 +152,7 @@ def fermion_sign_circuit(creation, annihilation):
 
 
 def qubit_excitation(
-    theta, creation, annihilation, gsd_control, gsd_sign, qubit_excitations
+    theta, creation, annihilation, gsd_control, gsd_sign, qubit_excitations, approx=False
 ):
     """
     Function that performs a "qubit" excitation. Note that, unless qubit_excitations=True,
@@ -190,17 +192,34 @@ def qubit_excitation(
 
     CNOT_circ_adjoint = circ.adjoint()
 
-    circ.add(
-        multi_qubit_controlled_Ry(
-            theta,
-            creation[0],
-            creation[1:],
-            annihilation,
-            gsd_control,
-            gsd_sign,
-            qubit_excitations,
+    if not approx:
+        circ.add(
+            multi_qubit_controlled_Ry(
+                theta,
+                creation[0],
+                creation[1:],
+                annihilation,
+                gsd_control,
+                gsd_sign,
+                qubit_excitations,
+            )
         )
-    )
+    else:
+        sign = 1
+        if not qubit_excitations:
+            # In the case of fermionic excitations, there exists a sign factor that
+            # multiplies the angle theta of the multi-qubit-controlled Ry gate. The
+            # sign factor depends on the many-body rank of the excitation operator.
+            prefactor = -1
+            rank = len(annihilation)
+            if rank == 1:
+                prefactor = 1
+            if not rank % 2 and not rank % 4:
+                prefactor = 1
+            elif not (rank - 1) % 2 and not (rank - 1) % 4:
+                prefactor = 1
+            sign *= prefactor * gsd_sign
+        circ.add(qf.gate("Ry", creation[0], creation[0], sign * 2.0 * theta))
 
     circ.add(CNOT_circ_adjoint)
 

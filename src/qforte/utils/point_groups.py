@@ -8,6 +8,8 @@ Currently, this module pertains only to molecular
 objects with "build_type = 'psi4'".
 """
 
+import numpy as np
+
 
 def irreps_of_point_groups(point_group):
     """
@@ -80,3 +82,72 @@ def char_table(point_group):
         for idx2, irrep2 in enumerate(irreps):
             print(irreps[idx1 ^ idx2].ljust(3), " ", end="")
         print()
+
+
+def symmetry_operations(point_group):
+    """
+    Function that prints the character table of a chosen point group corresponding to symmetry operations.
+
+    Parameters
+    ----------
+    point_group: string 
+        holding the name of the point group
+    """
+    group = point_group.lower()
+    groups = ["c1", "c2", "ci", "cs", "d2", "c2h", "c2v", "d2h"]
+
+    if group in {"c1"}:
+        sym_op = [[1]]
+    elif group in {
+        "c2",
+        "ci",
+        "cs"
+    }:
+        sym_op = [
+            [1, 1],
+            [1, -1]
+        ]
+    elif group in {
+        "d2",
+        "c2h",
+        "c2v"
+    }:
+        sym_op = [
+            [1, 1, 1, 1],
+            [1, 1, -1, -1],
+            [1, -1, 1, -1],
+            [1, -1, -1, 1]
+        ]
+    elif group in {"d2h"}: # d2h
+        sym_op = [
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, -1, -1, 1, 1, -1, -1],
+            [1, -1, 1, -1, 1, -1, 1, -1],
+            [1, -1, -1, 1, 1, -1, -1, 1],
+            [1, 1, 1, 1, -1, -1, -1, -1],
+            [1, 1, -1, -1, -1, -1, 1, 1],
+            [1, -1, 1, -1, -1, 1, -1, 1],
+            [1, -1, -1, 1, -1, 1, 1, -1],
+        ]
+    else:
+        raise ValueError(
+            "The given point group is not supported. Choose one of:\n{0}".format(groups)
+        )
+
+    return sym_op
+
+def symop_system(point_group, orb_irreps_to_int):
+    """
+    Function that prints the character table of a chosen point group corresponding to symmetry operations.
+
+    Parameters
+    ----------
+    point_group: string 
+        holding the name of the point group
+
+    orb_irreps_to_int: list[int]
+    """
+    sym_op = symmetry_operations(point_group)
+    symop_sys = [[operation[irrep] for irrep in orb_irreps_to_int] for operation in sym_op]
+    unique_ops, op_count = np.unique(symop_sys, axis=0, return_counts=True)
+    return unique_ops, op_count

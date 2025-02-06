@@ -32,7 +32,10 @@ class UCC(Trotterizable):
             A list of parameters that define the variational degrees of freedom in
             the state preparation circuit Uvqc. This is needed for the scipy minimizer.
         """
-        temp_pool = qf.SQOpPool()
+        if self._pool_type in {"sdoy0z", "symoy0z"}:
+            temp_pool = qf.QubitOperator()
+        else:
+            temp_pool = qf.SQOpPool()
         tamps = self._tamps if amplitudes is None else amplitudes
 
         if self._pool_type == "sa_SD":
@@ -53,6 +56,12 @@ class UCC(Trotterizable):
                     # Add the corresponding excitation component.
                     sq_op.add_term(-coeff, ann, cr)
                     temp_pool.add(tamp, sq_op)
+        elif self._pool_type in {"sdoy0z", "symoy0z"}:
+            for tamp, top in zip(tamps, self._tops):
+                temp_op = qf.QubitOperator()
+                temp_op.add(self._pool_obj[top][1])
+                temp_op.mult_coeffs(tamp)
+                temp_pool.add(temp_op)
         else:
             for tamp, top in zip(tamps, self._tops):
                 temp_pool.add(tamp, self._pool_obj[top][1])
@@ -60,13 +69,14 @@ class UCC(Trotterizable):
         if self._compact_excitations:
             U = qf.Circuit()
             for tamp, sq_op in temp_pool:
-                if self._pool_type == "sa_GSD" and len(sq_op.terms()) > 2:
+                if self._pool_type != "sa_SD" and len(sq_op.terms()) > 2:
                     U.add(
                         compact_excitation_circuit(
                             tamp * sq_op.terms()[2][0],
                             sq_op.terms()[2][1],
                             sq_op.terms()[2][2],
                             self._qubit_excitations,
+                            self._approx_compact_excitations,
                         )
                     )
                     U.add(
@@ -75,6 +85,7 @@ class UCC(Trotterizable):
                             sq_op.terms()[3][1],
                             sq_op.terms()[3][2],
                             self._qubit_excitations,
+                            self._approx_compact_excitations,
                         )
                     )
                 else:
@@ -84,13 +95,19 @@ class UCC(Trotterizable):
                             sq_op.terms()[1][1],
                             sq_op.terms()[1][2],
                             self._qubit_excitations,
+                            self._approx_compact_excitations,
                         )
                     )
             return U
 
-        A = temp_pool.get_qubit_operator(
-            "commuting_grp_lex", qubit_excitations=self._qubit_excitations
-        )
+        if self._pool_type in {"sdoy0z", "symoy0z"}:
+            A = qf.QubitOperator()
+            A.add(temp_pool)
+            A.mult_coeffs(1.0j)
+        else:
+            A = temp_pool.get_qubit_operator(
+                "commuting_grp_lex", qubit_excitations=self._qubit_excitations
+            )
 
         U, phase1 = trotterize(A, trotter_number=self._trotter_number)
         if phase1 != 1.0 + 0.0j:

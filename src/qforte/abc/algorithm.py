@@ -479,7 +479,7 @@ class AnsatzAlgorithm(Algorithm):
                 raise ValueError(
                     "PQE with Hamiltonian projection terms not yet supported."
                 )
-            expected_keys = {"nbetas", "target_s", "target_ms", "target_n", "is_sz_eig", "target_irrep"}
+            expected_keys = {"nbetas", "ntrapz", "target_s", "target_ms", "target_n", "is_sz_eig", "target_irrep"}
             if not isinstance(self._projection, dict):
                 raise ValueError(
                     f"The 'projection' option must be a dictionary with keys: {expected_keys}"
@@ -499,12 +499,14 @@ class AnsatzAlgorithm(Algorithm):
             target_n = self._projection.get("target_n")
             is_sz_eig = self._projection.get("is_sz_eig")
             target_irrep = self._projection.get("target_irrep")
+            ntrapz = self._projection.get("ntrapz")
             grad_meas_coeff = 1
             n_cnot_proj = 0
             projectors = []
 
             if (target_n is not None) or (not is_sz_eig):
-                ntrapz = int(max(sum(self._ref), self._nqb - sum(self._ref))) # * 2 # See paper
+                if ntrapz is None:
+                    ntrapz = int(max(sum(self._ref), self._nqb - sum(self._ref))) # * 2 # See paper
                 intvl = 2 * math.pi / ntrapz
 
             # NOTE: number projector

@@ -35,6 +35,7 @@ def create_psi_mol(**kwargs):
     kwargs.setdefault("symmetry", "c1")
     kwargs.setdefault("charge", 0)
     kwargs.setdefault("multiplicity", 1)
+    kwargs.setdefault("soscf", False)
 
     mol_geometry = kwargs["mol_geometry"]
     basis = kwargs["basis"]
@@ -46,7 +47,7 @@ def create_psi_mol(**kwargs):
     )
 
     if not use_psi4:
-        raise ImportError("Psi4 was not imported correctely.")
+        raise ImportError("Psi4 was not imported correctly.")
 
     # By default, the number of frozen orbitals is set to zero
     kwargs.setdefault("num_frozen_docc", 0)
@@ -88,6 +89,7 @@ def create_psi_mol(**kwargs):
             "ci_maxiter": 100,
             "num_frozen_docc": kwargs["num_frozen_docc"],
             "num_frozen_uocc": kwargs["num_frozen_uocc"],
+            "soscf": kwargs["soscf"],
             "mp2_type": "conv",
         }
     )

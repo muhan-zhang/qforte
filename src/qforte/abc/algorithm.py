@@ -416,7 +416,7 @@ class AnsatzAlgorithm(Algorithm):
                 raise ValueError(
                     "PQE with Hamiltonian penalty terms not yet supported."
                 )
-            expected_keys = {"operators", "eigenvalues", "scaling_factors"}
+            expected_keys = {"operators", "eigenvalues", "scaling_factors", "use_reduced_forms"}
             if not isinstance(self._penalty, dict):
                 raise ValueError(
                     f"The 'penalty' option must be a dictionary with keys: {expected_keys}"
@@ -433,6 +433,7 @@ class AnsatzAlgorithm(Algorithm):
                 not len(self._penalty["operators"])
                 == len(self._penalty["eigenvalues"])
                 == len(self._penalty["scaling_factors"])
+                == len(self._penalty["use_reduced_forms"])
             ):
                 raise ValueError(
                     "Operators, eigenvalues, and scaling factors lists must be of the same length."
@@ -456,6 +457,8 @@ class AnsatzAlgorithm(Algorithm):
                 raise ValueError(
                     "All elements in 'scaling_factors' must be real numbers."
                 )
+            if self._penalty.get("use_reduced_forms") is None:
+                self._penalty["use_reduced_forms"] = [False] * len(self._penalty["eigenvalues"])
             penalties_qop = qf.QubitOperator()
             for i in range(len(self._penalty["eigenvalues"])):
                 eig = qf.Circuit()
@@ -464,7 +467,8 @@ class AnsatzAlgorithm(Algorithm):
                 temp_qop.add(self._penalty["operators"][i])
                 temp_qop.add(-self._penalty["eigenvalues"][i], eig)
                 penalty_qop.add(temp_qop)
-                penalty_qop.operator_product(temp_qop, True, True)
+                if not self._penalty["use_reduced_forms"][i]:
+                    penalty_qop.operator_product(temp_qop, True, True)
                 penalty_qop.mult_coeffs(self._penalty["scaling_factors"][i])
                 penalties_qop.add(penalty_qop)
                 penalties_qop.simplify(True)

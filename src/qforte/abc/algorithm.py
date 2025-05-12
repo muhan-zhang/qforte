@@ -5,7 +5,6 @@ The abstract base classes inherited by all algorithm subclasses.
 """
 
 from abc import ABC, abstractmethod
-import math
 import qforte as qf
 from qforte.utils.state_prep import *
 from qforte.abc.mixin import Trotterizable
@@ -483,7 +482,16 @@ class AnsatzAlgorithm(Algorithm):
                 raise ValueError(
                     "PQE with Hamiltonian projection terms not yet supported."
                 )
-            expected_keys = {"nbetas", "ntrapz", "target_s", "target_ms", "target_n", "is_sz_eig", "target_irrep"}
+            expected_keys = {
+                "ntrapz", 
+                "ngl", 
+                "nlebedev", 
+                "is_sz_eig", 
+                "target_s", 
+                "target_ms", 
+                "target_n", 
+                "target_irrep",
+            }
             if not isinstance(self._projection, dict):
                 raise ValueError(
                     f"The 'projection' option must be a dictionary with keys: {expected_keys}"
@@ -497,167 +505,17 @@ class AnsatzAlgorithm(Algorithm):
             #         "All values in the 'projection' dictionary must be integers."
             #     )
 
-            
-            target_s = self._projection.get("target_s")
-            target_ms = self._projection.get("target_ms")
-            target_n = self._projection.get("target_n")
-            is_sz_eig = self._projection.get("is_sz_eig")
-            target_irrep = self._projection.get("target_irrep")
-            ntrapz = self._projection.get("ntrapz")
-            grad_meas_coeff = 1
-            n_cnot_proj = 0
-            projectors = []
-
-            if (target_n is not None) or (not is_sz_eig):
-                if ntrapz is None:
-                    ntrapz = int(max(sum(self._ref), self._nqb - sum(self._ref))) # * 2 # See paper
-                intvl = 2 * math.pi / ntrapz
-
-            # NOTE: number projector
-            if target_n is not None:
-                projn = qf.QubitOperator()
-                for idn in range(ntrapz):
-                    phi = intvl * idn
-                    wg = complex(math.cos(phi * (self._nqb / 2 - target_n)), 
-                                 math.sin(phi * (self._nqb / 2 - target_n))) / ntrapz
-                    Ug = qf.Circuit()
-                    for ig in range(0, self._nqb, 2):
-                        Ug.add(qf.gate("Rz", ig, ig, phi))
-                        Ug.add(qf.gate("Rz", ig + 1, ig + 1, phi))
-                    projn.add(wg, Ug)
-                projectors.append(projn)
-                grad_meas_coeff *= ntrapz
-                n_cnot_proj += 2 * self._nqb
-            
-            # NOTE: spatial projector
-            if target_irrep is not None:
-                projirrep = qf.QubitOperator()
-                irrep_ops, op_counts = qf.symop_system(
-                    self._sys.point_group[0],  # string specifying the point group
-                    self._sys.orb_irreps_to_int  # list of irreps for this system
-                )
-                op_sum = sum(op_counts)
-                max_nczgates = -1
-                for gm, op_count in zip(irrep_ops, op_counts):
-                    Ug = qf.Circuit()
-                    wg = op_count / op_sum
-                    nczgates = 0
-                    for ig in range(0, int(self._nqb / 2)):
-                        if gm[ig] == -1:
-                            Ug.add(qf.gate("Z", ig * 2))
-                            Ug.add(qf.gate("Z", ig * 2 + 1))
-                            nczgates += 2
-                    projirrep.add(wg, Ug)
-                    max_nczgates = max(max_nczgates, nczgates)
-                projectors.append(projirrep)
-                grad_meas_coeff *= len(irrep_ops)
-                n_cnot_proj += 2 * max_nczgates
-
-            # NOTE: the following code block is to generate spin projection operator (projector).
-            #       However, the projector generated is only for specific evaluations with a caveat
-            #       to project an arbitrary state to a non-Sz-symmetry-adapted space.
-            #       This a priori simplifies calculations of energy expval and energy gradients
-
-            if is_sz_eig is not None:
-
-                projs2 = qf.QubitOperator()
-
-                proj_npoints = self._projection.get("nbetas")
-                gl_quad_points, gl_quad_weights = np.polynomial.legendre.leggauss(
-                    proj_npoints
-                )
-                self._projection.update(
-                    {
-                        "gl_quad_points": gl_quad_points, 
-                        "gl_quad_weights": gl_quad_weights,
-                        "min_n_cnot_proj": 2 * self._nqb
-                    }
-                )
-
-                betas = []
-                small_ds = []
-
-                if not is_sz_eig:
-                    projsz = qf.QubitOperator()
-                    for ida in range(ntrapz):
-                        alpha = intvl * ida
-                        wg = complex(math.cos(alpha * target_ms), math.sin(alpha * target_ms)) / ntrapz
-                        Ug = qf.Circuit()
-                        # NOTE: exp(-i gamma Sz)
-                        for ia in range(0, self._nqb, 2):
-                            Ug.add(qf.gate("Rz", ia, ia, -alpha / 2))
-                            Ug.add(qf.gate("Rz", ia + 1, ia + 1, alpha / 2))
-                        projsz.add(wg, Ug)
-
-                for pt, wG in zip(
-                    self._projection.get("gl_quad_points"),
-                    self._projection.get("gl_quad_weights"),
-                ):
-                    beta = math.pi - math.acos(pt)  # Gauss-Legendre quad
-
-                    # NOTE: wigner small d calculation -- real number
-                    jmax = min(target_s + target_ms, target_s - target_ms)
-                    small_d = 0.0
-                    for j in range(int(jmax) + 1):
-                        small_d += (
-                            ((-1) ** j)
-                            * (math.cos(beta / 2.0) ** (2.0 * (target_s - j)))
-                            * (math.sin(beta / 2.0) ** (2.0 * j))
-                            / math.factorial(int(target_s + target_ms - j))
-                            / (math.factorial(j) ** 2)
-                            / math.factorial(int(target_s - target_ms - j))
-                        )
-                    small_d *= math.factorial(int(target_s + target_ms)) * math.factorial(
-                        int(target_s - target_ms)
-                    )
-
-                    # NOTE: weight of each Ug
-                    #       defined by Euler angle integration, wigner small d, quadrature
-                    wg = (target_s + 0.5) * small_d * wG 
-
-                    # NOTE: Unitary unit for summation
-                    Ug = qf.Circuit()
-                    for ib in range(0, self._nqb, 2):
-                        Ug.add(
-                            qf.compact_excitation_circuit(
-                                beta / 2.0, [ib + 1], [ib], qubit_excitations=False
-                            )
-                        )
-
-                    betas.append(beta)
-                    small_ds.append(small_d)
-                    projs2.add_term(wg, Ug)
-
-                if is_sz_eig:
-                    n_cnot_proj += int(
-                        int(self._nqb / 2) * 8
-                    )  # 8 by controlled-Rz with one ancilla qubit
-                    grad_meas_coeff *= self._projection.get("nbetas")
-                    projectors.append(projs2)
-                else:
-                    n_cnot_proj += int(int(self._nqb / 2) * 8) + 4 * self._nqb
-                    grad_meas_coeff *= self._projection.get("nbetas")
-                    grad_meas_coeff *= ntrapz**2
-                    projectors.append(projsz)
-                    projectors.append(projs2)
-                    projectors.append(projsz)
-
-                self._Nl = len(self._qb_ham.terms()) * grad_meas_coeff
-
-                self._projection.update(
-                    {
-                        "betas": betas,
-                        "small_ds": small_ds,
-                    }
-                )
-            
             self._projection.update(
-                {
-                    "projector": projectors,
-                    "n_cnot_proj": n_cnot_proj,
-                    "grad_meas_coeff": grad_meas_coeff,
-                }
+                **qf.construct_proj( # qforte.utils.projection.construct_proj
+                    _nqb=self._nqb,
+                    _ref=self._ref,
+                    _point_group=self._sys.point_group,
+                    _orb_irreps_to_int=self._sys.orb_irreps_to_int,
+                    **self._projection,
+                )
             )
+
+            self._Nl = len(self._qb_ham.terms()) * self._projection.get("grad_meas_coeff")
 
         kwargs.setdefault("irrep", None)
         if hasattr(self._sys, "point_group"):

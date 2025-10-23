@@ -140,13 +140,13 @@ def construct_proj(
         else:
             if ngl is None and nlebedev is None:
                 nlebedev = 3 # lebedev grid (default value)
-                ntrapzsz = 8
+                ntrapzsz = ntrapz
                 method = "lebedev"
             elif ngl:
                 ntrapzsz = ntrapz
                 method = "gauss-legendre"
             else:
-                ntrapzsz = 8
+                ntrapzsz = ntrapz
                 method = "lebedev"
 
         small_ds = []

@@ -325,6 +325,10 @@ class AnsatzAlgorithm(Algorithm):
             self._Nm = [
                 len(operator.terms()) for _, operator in self._pool_obj
             ]
+        elif self._approx_compact_excitations:
+            self._Nm = [
+                1 for _, operator in self._pool_obj
+            ]
         else:
             self._Nm = [
                 len(operator.jw_transform().terms()) for _, operator in self._pool_obj

@@ -206,6 +206,7 @@ def construct_proj(
 
         elif method == "lebedev":
             cartcoords, wl = lebedev_rule(nlebedev) # wl has been normalized to 4pi
+            nlebsamp = len(wl)
             betas = []
             gammas = []
             for i in range(len(wl)):
@@ -257,7 +258,7 @@ def construct_proj(
                 projectors.append(projs2)
                 projectors.append(projsz)
             elif method == "lebedev":
-                grad_meas_coeff *= nlebedev
+                grad_meas_coeff *= nlebsamp
                 grad_meas_coeff *= ntrapz
                 projectors.append(projs2)
                 projectors.append(projsz)

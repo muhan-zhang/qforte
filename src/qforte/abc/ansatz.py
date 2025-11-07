@@ -68,11 +68,11 @@ class UCC(Trotterizable):
 
         if self._compact_excitations:
             U = qf.Circuit()
-            for tamp, sq_op in temp_pool:
-                if self._pool_type != "sa_SD" and len(sq_op.terms()) > 2:
+            for i, (tamp, sq_op) in enumerate(temp_pool):
+                if self._pool_type != "sa_SD" and self._pool_type != "CEO" and len(sq_op.terms()) > 2:
                     U.add(
                         compact_excitation_circuit(
-                            tamp * sq_op.terms()[2][0],
+                            tamp, sq_op.terms()[2][0],
                             sq_op.terms()[2][1],
                             sq_op.terms()[2][2],
                             self._qubit_excitations,
@@ -81,7 +81,7 @@ class UCC(Trotterizable):
                     )
                     U.add(
                         compact_excitation_circuit(
-                            tamp * sq_op.terms()[3][0],
+                            tamp, sq_op.terms()[3][0],
                             sq_op.terms()[3][1],
                             sq_op.terms()[3][2],
                             self._qubit_excitations,
@@ -91,11 +91,12 @@ class UCC(Trotterizable):
                 else:
                     U.add(
                         compact_excitation_circuit(
-                            tamp * sq_op.terms()[1][0],
+                            tamp, sq_op.terms()[1][0],
                             sq_op.terms()[1][1],
                             sq_op.terms()[1][2],
                             self._qubit_excitations,
                             self._approx_compact_excitations,
+                            self._ceo_qubits[self._tops[i]],
                         )
                     )
             return U

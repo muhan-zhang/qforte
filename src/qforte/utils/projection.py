@@ -190,7 +190,7 @@ def construct_proj(
                 for ib in range(0, _nqb, 2):
                     Ug.add(
                         qf.compact_excitation_circuit(
-                            beta / 2.0, [ib + 1], [ib], qubit_excitations=False
+                            beta / 2.0, 1.0, [ib + 1], [ib], qubit_excitations=False
                         )
                     )
 
@@ -228,7 +228,7 @@ def construct_proj(
                 for ib in range(0, _nqb, 2):
                     Ug.add(
                         qf.compact_excitation_circuit(
-                            beta / 2.0, [ib + 1], [ib], qubit_excitations=False
+                            beta / 2.0, 1.0, [ib + 1], [ib], qubit_excitations=False
                         )
                     )
                 betas.append(beta)

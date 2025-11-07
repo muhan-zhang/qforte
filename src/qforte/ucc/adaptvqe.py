@@ -14,6 +14,7 @@ from qforte.utils.transforms import *
 from qforte.utils.state_prep import *
 from qforte.utils.trotterization import trotterize
 from qforte.utils import moment_energy_corrections
+from qforte.utils import coupled_exchange
 from qforte.maths import optimizer
 
 import numpy as np
@@ -153,6 +154,7 @@ class ADAPTVQE(UCCVQE):
         self.print_options_banner()
 
         self.fill_pool()
+        self.generate_ceo_tags()
 
         if self._use_aux_pool:
             self._nsaop = self._pool_obj.get_nsaop()
@@ -668,3 +670,4 @@ class ADAPTVQE(UCCVQE):
 ADAPTVQE.jacobi_solver = optimizer.jacobi_solver
 ADAPTVQE.construct_moment_space = moment_energy_corrections.construct_moment_space
 ADAPTVQE.compute_moment_energies = moment_energy_corrections.compute_moment_energies
+ADAPTVQE.generate_ceo_tags = coupled_exchange.generate_ceo_tags

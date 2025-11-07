@@ -12,3 +12,4 @@ from .symmetry_analysis import *
 from .compute_matrix_element import *
 from .circuit_to_latex import *
 from .projection import *
+from .coupled_exchange import *

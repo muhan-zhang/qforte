@@ -6,8 +6,8 @@ import qforte as qf
 import numpy as np
 
 
-def compact_excitation_circuit(theta, creation, annihilation, qubit_excitations, 
-    approx=False):
+def compact_excitation_circuit(tamp, coeff, creation, annihilation, qubit_excitations, 
+    approx=False, coupled_exchange=None):
     """
     This function constructs compact quantum circuits for fermionic/qubit
     excitations of the form
@@ -33,6 +33,11 @@ def compact_excitation_circuit(theta, creation, annihilation, qubit_excitations,
         Quantum circuit of fermionic/qubit excitation.
     """
 
+    if coupled_exchange is not None and isinstance(coupled_exchange, list):
+        return coupled_exchange_excitation(tamp, coupled_exchange)
+
+    theta = tamp * coeff
+    
     if len(creation) != len(annihilation):
         raise ValueError(
             "Compact fermionic/qubit excitations are implemented for particle-number-conserving operators only."
@@ -307,4 +312,31 @@ def multi_qubit_controlled_Ry(
                     circ.add(qf.gate("aCNOT", target, control))
                 break
 
+    return circ
+
+
+def coupled_exchange_excitation(theta, ceq):
+    circ = qf.Circuit()
+
+    circ.add(qf.gate("CNOT", ceq[0], ceq[1]))
+    circ.add(qf.gate("CNOT", ceq[2], ceq[3]))
+    circ.add(qf.gate("CNOT", ceq[1], ceq[3]))
+
+    circ.add(qf.gate("H", ceq[0]))
+    circ.add(qf.gate("H", ceq[2]))
+    circ.add(qf.gate("Ry", ceq[3], ceq[3], -theta / 2.0))
+    circ.add(qf.gate("CNOT", ceq[0], ceq[3]))
+    circ.add(qf.gate("Ry", ceq[3], ceq[3], theta / 2.0))
+    circ.add(qf.gate("CNOT", ceq[2], ceq[3]))
+    circ.add(qf.gate("Ry", ceq[3], ceq[3], -theta / 2.0))
+    circ.add(qf.gate("CNOT", ceq[0], ceq[3]))
+    circ.add(qf.gate("Ry", ceq[3], ceq[3], theta / 2.0))
+    circ.add(qf.gate("CNOT", ceq[2], ceq[3]))
+    circ.add(qf.gate("H", ceq[0]))
+    circ.add(qf.gate("H", ceq[2]))
+
+    circ.add(qf.gate("CNOT", ceq[1], ceq[3]))
+    circ.add(qf.gate("CNOT", ceq[2], ceq[3]))
+    circ.add(qf.gate("CNOT", ceq[0], ceq[1]))
+    
     return circ

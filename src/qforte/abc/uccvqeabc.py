@@ -172,7 +172,7 @@ class UCCVQE(UCC, VQE):
             Kmu_prev.add_term(
                 self._pool_obj[self._tops[mu]][0] * self._pool_obj[self._tops[mu]][1].terms()[1][0],
                 compact_excitation_circuit(
-                    np.pi / 2,
+                    np.pi / 2, 1,
                     self._pool_obj[self._tops[mu]][1].terms()[1][1],
                     self._pool_obj[self._tops[mu]][1].terms()[1][2],
                     self._qubit_excitations,
@@ -220,7 +220,7 @@ class UCCVQE(UCC, VQE):
                 Kmu.add_term(
                     self._pool_obj[self._tops[mu]][0] * self._pool_obj[self._tops[mu]][1].terms()[1][0],
                     compact_excitation_circuit(
-                        np.pi / 2,
+                        np.pi / 2, 1,
                         self._pool_obj[self._tops[mu]][1].terms()[1][1],
                         self._pool_obj[self._tops[mu]][1].terms()[1][2],
                         self._qubit_excitations,
@@ -230,13 +230,13 @@ class UCCVQE(UCC, VQE):
 
             if self._compact_excitations:
                 if (
-                    self._pool_type != "sa_SD"
+                    self._pool_type != "sa_SD" and self._pool_type != "CEO"
                     and len(self._pool_obj[self._tops[mu + 1]][1].terms()) > 2
                 ):
                     Umu = qf.Circuit()
                     Umu.add(
                         compact_excitation_circuit(
-                            -tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[2][0],
+                            -tamp, self._pool_obj[self._tops[mu + 1]][1].terms()[2][0],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[2][1],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[2][2],
                             self._qubit_excitations,
@@ -244,7 +244,7 @@ class UCCVQE(UCC, VQE):
                     )
                     Umu.add(
                         compact_excitation_circuit(
-                            -tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[3][0],
+                            -tamp, self._pool_obj[self._tops[mu + 1]][1].terms()[3][0],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[3][1],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[3][2],
                             self._qubit_excitations,
@@ -260,7 +260,7 @@ class UCCVQE(UCC, VQE):
                         # In this particular case, the minus sign is already incorporated
                         Umu.add(
                             compact_excitation_circuit(
-                                tamp * coeff, ann, cr, 
+                                tamp, coeff, ann, cr, 
                                 self._qubit_excitations, 
                                 self._approx_compact_excitations,
                             )
@@ -271,11 +271,12 @@ class UCCVQE(UCC, VQE):
                     # (see original ADAPT-VQE paper)
                     Umu.add(
                         compact_excitation_circuit(
-                            -tamp * self._pool_obj[self._tops[mu + 1]][1].terms()[1][0],
+                            -tamp, self._pool_obj[self._tops[mu + 1]][1].terms()[1][0],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[1][1],
                             self._pool_obj[self._tops[mu + 1]][1].terms()[1][2],
                             self._qubit_excitations,
                             self._approx_compact_excitations,
+                            self._ceo_qubits[self._tops[mu + 1]],
                         )
                     )
             else:
@@ -383,7 +384,7 @@ class UCCVQE(UCC, VQE):
                 qc_temp.apply_operator(Kmu)
             else:
                 qc_temp.apply_circuit(compact_excitation_circuit(
-                    np.pi / 2,
+                    np.pi / 2, 1,
                     operator.terms()[1][1],
                     operator.terms()[1][2],
                     self._qubit_excitations,

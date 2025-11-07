@@ -1123,6 +1123,266 @@ void SQOpPool::fill_pool(std::string pool_type) {
             temp3.simplify();
             add_term(1.0, temp3);
         }
+    } else if (pool_type == "CEO") {
+        fill_pool("GSD");
+
+        std::vector<std::vector<size_t>> uniqe_2bdy;
+        std::vector<std::vector<size_t>> adjnt_2bdy;
+        std::vector<std::vector<size_t>> cpld_uniqe_2bdy;
+        std::vector<std::vector<size_t>> cpld_adjnt_2bdy;
+
+        for (auto iter = terms_.begin(); iter != terms_.end(); ) {
+            if (std::get<1>(std::get<1>(*iter).terms()[0]).size() == 2) { // double excitation
+            std::vector<size_t> vtemp{std::get<1>(std::get<1>(*iter).terms()[0])[0],
+                                      std::get<1>(std::get<1>(*iter).terms()[0])[1],
+                                      std::get<2>(std::get<1>(*iter).terms()[0])[0],
+                                      std::get<2>(std::get<1>(*iter).terms()[0])[1]};
+            std::vector<size_t> vadjt{std::get<1>(std::get<1>(*iter).terms()[1])[0],
+                                      std::get<1>(std::get<1>(*iter).terms()[1])[1],
+                                      std::get<2>(std::get<1>(*iter).terms()[1])[0],
+                                      std::get<2>(std::get<1>(*iter).terms()[1])[1]};
+            std::unordered_set<size_t> seen;
+            bool is_spectator = false;
+            seen.reserve(vtemp.size());
+            for (size_t so : vtemp) {
+                if (!seen.insert(so).second) {is_spectator = true; break;} // duplicate hit
+            }
+            if (!is_spectator) { // not a spectator single excitation
+            if ((((vtemp[0] | vtemp[1] | vtemp[2] | vtemp[3]) & 1) == 0) ||   // all even  → LSBs all 0
+               (((vtemp[0] & vtemp[1] & vtemp[2] & vtemp[3]) & 1) == 1)) {    // all odd
+
+                std::vector<size_t> vcpld1{vtemp[0], vtemp[3], vtemp[2], vtemp[1]};
+                std::vector<size_t> vcpld2{vtemp[0], vtemp[2], vtemp[1], vtemp[3]};
+                std::vector<size_t> vcpad1{vtemp[1], vtemp[2], vtemp[3], vtemp[0]};
+                std::vector<size_t> vcpad2{vtemp[3], vtemp[1], vtemp[2], vtemp[0]};
+
+                SQOperator temp2cpld1, temp2cpld2, temp2ceopt;
+                SQOperator temp2ceop1, temp2ceop2, temp2ceop3;
+                SQOperator temp2ceom2, temp2ceom3;
+
+                // the coupled operator 1
+                temp2cpld1.add_term(+1.0, {vcpld1[0], vcpld1[1]}, {vcpld1[2], vcpld1[3]});
+                temp2cpld1.add_term(-1.0, {vcpad1[0], vcpad1[1]}, {vcpad1[2], vcpad1[3]});
+
+                // the coupled operator 2
+                temp2cpld2.add_term(+1.0, {vcpld2[0], vcpld2[1]}, {vcpld2[2], vcpld2[3]});
+                temp2cpld2.add_term(-1.0, {vcpad2[0], vcpad2[1]}, {vcpad2[2], vcpad2[3]});
+
+                temp2ceop1.add_op(std::get<1>(*iter)); // copy the original operator
+                temp2ceop1.add_op(temp2cpld1);
+                temp2ceop1.simplify();
+
+                temp2ceop2.add_op(std::get<1>(*iter)); // copy the original operator
+                temp2ceop2.add_op(temp2cpld2);
+                temp2ceop2.simplify();
+
+                temp2ceop3.add_op(temp2cpld1); 
+                temp2ceop3.add_op(temp2cpld2);
+                temp2ceop3.simplify();
+
+                temp2ceopt.add_op(std::get<1>(*iter));
+                temp2ceopt.add_op(temp2cpld1); 
+                temp2ceopt.add_op(temp2cpld2);
+                temp2ceopt.simplify();
+
+                temp2cpld2.mult_coeffs(-1.0);
+                temp2ceom2.add_op(std::get<1>(*iter)); // copy the original operator
+                temp2ceom2.add_op(temp2cpld2);
+                temp2ceom2.simplify();
+
+                temp2ceom3.add_op(temp2cpld1); 
+                temp2ceom3.add_op(temp2cpld2);
+                temp2ceom3.simplify();
+
+
+                std::vector<size_t> vtemp1{std::get<1>(temp2ceopt.terms()[0])[0],
+                                           std::get<1>(temp2ceopt.terms()[0])[1],
+                                           std::get<2>(temp2ceopt.terms()[0])[0],
+                                           std::get<2>(temp2ceopt.terms()[0])[1]};
+                std::vector<size_t> vtemp2{std::get<1>(temp2ceopt.terms()[1])[0],
+                                           std::get<1>(temp2ceopt.terms()[1])[1],
+                                           std::get<2>(temp2ceopt.terms()[1])[0],
+                                           std::get<2>(temp2ceopt.terms()[1])[1]};
+                std::vector<size_t> vtemp3{std::get<1>(temp2ceopt.terms()[2])[0],
+                                           std::get<1>(temp2ceopt.terms()[2])[1],
+                                           std::get<2>(temp2ceopt.terms()[2])[0],
+                                           std::get<2>(temp2ceopt.terms()[2])[1]};
+                std::vector<size_t> vtemp4{std::get<1>(temp2ceopt.terms()[3])[0],
+                                           std::get<1>(temp2ceopt.terms()[3])[1],
+                                           std::get<2>(temp2ceopt.terms()[3])[0],
+                                           std::get<2>(temp2ceopt.terms()[3])[1]};
+                std::vector<size_t> vtemp5{std::get<1>(temp2ceopt.terms()[4])[0],
+                                           std::get<1>(temp2ceopt.terms()[4])[1],
+                                           std::get<2>(temp2ceopt.terms()[4])[0],
+                                           std::get<2>(temp2ceopt.terms()[4])[1]};
+                std::vector<size_t> vtemp6{std::get<1>(temp2ceopt.terms()[5])[0],
+                                           std::get<1>(temp2ceopt.terms()[5])[1],
+                                           std::get<2>(temp2ceopt.terms()[5])[0],
+                                           std::get<2>(temp2ceopt.terms()[5])[1]};
+
+                if ((std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp1) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp1) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp1) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp1) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp2) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp2) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp2) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp2) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp3) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp3) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp3) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp3) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp4) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp4) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp4) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp4) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp5) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp5) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp5) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp5) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp6) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp6) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp6) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp6) == cpld_adjnt_2bdy.end())) {
+                    
+                    uniqe_2bdy.push_back(vtemp1);
+                    adjnt_2bdy.push_back(vtemp2);
+                    cpld_uniqe_2bdy.push_back(vtemp3);
+                    cpld_adjnt_2bdy.push_back(vtemp4);
+                    uniqe_2bdy.push_back(vtemp5);
+                    adjnt_2bdy.push_back(vtemp6);
+                    cpld_uniqe_2bdy.push_back(vtemp5);
+                    cpld_adjnt_2bdy.push_back(vtemp6);
+
+                    // change the original operator to CEO-
+                    temp2cpld1.mult_coeffs(-1.0);
+                    std::get<1>(*iter).add_op(temp2cpld1);
+                    std::get<1>(*iter).simplify();
+
+                    iter = terms_.insert(iter, std::make_pair(1.0, temp2ceop1));
+                    iter = terms_.insert(iter, std::make_pair(1.0, temp2ceom2));
+                    iter = terms_.insert(iter, std::make_pair(1.0, temp2ceop2));
+                    iter = terms_.insert(iter, std::make_pair(1.0, temp2ceom3));
+                    iter = terms_.insert(iter, std::make_pair(1.0, temp2ceop3));
+                    iter += 6;
+                    } else {
+                    iter = terms_.erase(iter);
+                    }
+                } else {
+                std::vector<size_t> vcpld;
+                std::vector<size_t> vcpad;
+
+                if ((vtemp[0] & vtemp[3] & 1u) == (vtemp[2] & vtemp[1] & 1u)) {
+                    vcpld = {vtemp[0], vtemp[3], vtemp[2], vtemp[1]};
+                    vcpad = {vtemp[1], vtemp[2], vtemp[3], vtemp[0]};
+                } else {
+                    vcpld = {vtemp[0], vtemp[2], vtemp[1], vtemp[3]};
+                    vcpad = {vtemp[3], vtemp[1], vtemp[2], vtemp[0]};
+                }
+
+                SQOperator temp2cpld, temp2ceop;
+
+                // the coupled operator
+                temp2cpld.add_term(+1.0, {vcpld[0], vcpld[1]}, {vcpld[2], vcpld[3]});
+                temp2cpld.add_term(-1.0, {vcpad[0], vcpad[1]}, {vcpad[2], vcpad[3]});
+
+                temp2ceop.add_op(std::get<1>(*iter)); // copy the original operator
+                temp2ceop.add_op(temp2cpld);
+                temp2ceop.simplify();
+
+                std::vector<size_t> vtemp1{std::get<1>(temp2ceop.terms()[0])[0],
+                                           std::get<1>(temp2ceop.terms()[0])[1],
+                                           std::get<2>(temp2ceop.terms()[0])[0],
+                                           std::get<2>(temp2ceop.terms()[0])[1]};
+                std::vector<size_t> vtemp2{std::get<1>(temp2ceop.terms()[1])[0],
+                                           std::get<1>(temp2ceop.terms()[1])[1],
+                                           std::get<2>(temp2ceop.terms()[1])[0],
+                                           std::get<2>(temp2ceop.terms()[1])[1]};
+                std::vector<size_t> vtemp3{std::get<1>(temp2ceop.terms()[2])[0],
+                                           std::get<1>(temp2ceop.terms()[2])[1],
+                                           std::get<2>(temp2ceop.terms()[2])[0],
+                                           std::get<2>(temp2ceop.terms()[2])[1]};
+                std::vector<size_t> vtemp4{std::get<1>(temp2ceop.terms()[3])[0],
+                                           std::get<1>(temp2ceop.terms()[3])[1],
+                                           std::get<2>(temp2ceop.terms()[3])[0],
+                                           std::get<2>(temp2ceop.terms()[3])[1]};
+
+                if ((std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp1) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp1) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp1) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp1) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp2) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp2) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp2) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp2) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp3) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp3) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp3) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp3) == cpld_adjnt_2bdy.end()) &&
+                    (std::find(uniqe_2bdy.begin(), uniqe_2bdy.end(), vtemp4) ==
+                        uniqe_2bdy.end()) &&
+                    (std::find(adjnt_2bdy.begin(), adjnt_2bdy.end(), vtemp4) == 
+                        adjnt_2bdy.end()) &&
+                    (std::find(cpld_uniqe_2bdy.begin(), cpld_uniqe_2bdy.end(), 
+                        vtemp4) == cpld_uniqe_2bdy.end()) &&
+                    (std::find(cpld_adjnt_2bdy.begin(), cpld_adjnt_2bdy.end(), 
+                        vtemp4) == cpld_adjnt_2bdy.end())) {
+                    
+                    uniqe_2bdy.push_back(vtemp1);
+                    adjnt_2bdy.push_back(vtemp2);
+                    cpld_uniqe_2bdy.push_back(vtemp3);
+                    cpld_adjnt_2bdy.push_back(vtemp4);
+
+                    // change the original operator to CEO-
+                    temp2cpld.mult_coeffs(-1.0);
+                    std::get<1>(*iter).add_op(temp2cpld);
+                    std::get<1>(*iter).simplify();
+
+                    iter = terms_.insert(iter, std::make_pair(1.0, temp2ceop));
+                    iter += 2;
+                    } else {
+                    iter = terms_.erase(iter);
+                    }
+                }
+            } else {iter++;}
+            } else {iter++;}
+        }
     } else {
         throw std::invalid_argument("Invalid pool_type specified.");
     }

@@ -299,6 +299,7 @@ class AnsatzAlgorithm(Algorithm):
             "SDTQ",
             "SDTQP",
             "SDTQPH",
+            "CEO",
         }:
             self._pool_obj = qf.SQOpPool()
             if hasattr(self._sys, "orb_irreps_to_int"):

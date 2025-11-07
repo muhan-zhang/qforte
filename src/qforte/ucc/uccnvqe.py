@@ -14,6 +14,7 @@ from qforte.utils.transforms import *
 from qforte.utils.state_prep import *
 from qforte.utils.trotterization import trotterize
 from qforte.utils import moment_energy_corrections
+from qforte.utils import coupled_exchange
 
 import numpy as np
 from scipy.optimize import minimize
@@ -84,6 +85,7 @@ class UCCNVQE(UCCVQE):
         ######### UCCN-VQE #########
 
         self.fill_pool()
+        self.generate_ceo_tags()
 
         if self._verbose:
             print(self._pool_obj.str())
@@ -301,3 +303,4 @@ class UCCNVQE(UCCVQE):
 UCCNVQE.jacobi_solver = optimizer.jacobi_solver
 UCCNVQE.construct_moment_space = moment_energy_corrections.construct_moment_space
 UCCNVQE.compute_moment_energies = moment_energy_corrections.compute_moment_energies
+UCCNVQE.generate_ceo_tags = coupled_exchange.generate_ceo_tags

@@ -79,7 +79,7 @@ def construct_proj(
     projectors = []
     projection = {}
 
-    if (target_n is not None) or (not is_sz_eig):
+    if (target_n is not None) or (target_ms is not None) or (not is_sz_eig):
         if ntrapz is None:
             ntrapz = int(max(sum(_ref), _nqb - sum(_ref))) # * 2 # See paper
         intvl = 2 * math.pi / ntrapz
@@ -97,6 +97,22 @@ def construct_proj(
                 Ug.add(qf.gate("Rz", ig + 1, ig + 1, phi))
             projn.add(wg, Ug)
         projectors.append(projn)
+        grad_meas_coeff *= ntrapz
+        n_cnot_proj += 2 * _nqb
+
+    # NOTE: Sz only projector (for S2 or S2 + Sz, see below)
+    if (target_ms is not None) and (target_s is None):
+        projsz = qf.QubitOperator()
+        for ida in range(ntrapz):
+            alpha = intvl * ida
+            wg = complex(math.cos(alpha * target_ms), math.sin(alpha * target_ms)) / ntrapz
+            Ug = qf.Circuit()
+            # NOTE: exp(-i gamma Sz)
+            for ia in range(0, _nqb, 2):
+                Ug.add(qf.gate("Rz", ia, ia, -alpha / 2))
+                Ug.add(qf.gate("Rz", ia + 1, ia + 1, alpha / 2))
+            projsz.add(wg, Ug)
+        projectors.append(projsz)
         grad_meas_coeff *= ntrapz
         n_cnot_proj += 2 * _nqb
     

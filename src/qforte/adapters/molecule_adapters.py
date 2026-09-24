@@ -36,11 +36,23 @@ def create_psi_mol(**kwargs):
     kwargs.setdefault("charge", 0)
     kwargs.setdefault("multiplicity", 1)
     kwargs.setdefault("soscf", False)
+    kwargs.setdefault("restart", None)
+    kwargs.setdefault("no_reorient", None)
+    kwargs.setdefault("no_com", None)
+    kwargs.setdefault("unit", "angstrom")
+    kwargs.setdefault("e_convergence", 1e-8)
+    kwargs.setdefault("d_convergence", 1e-8)
 
     mol_geometry = kwargs["mol_geometry"]
     basis = kwargs["basis"]
     multiplicity = kwargs["multiplicity"]
     charge = kwargs["charge"]
+    restart = kwargs["restart"]
+    no_reorient = kwargs["no_reorient"]
+    no_com = kwargs["no_com"]
+    unit = kwargs["unit"]
+    e_convergence = kwargs["e_convergence"]
+    d_convergence = kwargs["d_convergence"]
 
     qforte_mol = Molecule(
         mol_geometry=mol_geometry, basis=basis, multiplicity=multiplicity, charge=charge
@@ -69,7 +81,16 @@ def create_psi_mol(**kwargs):
             f"\n{geom_line[0]}  {geom_line[1][0]}  {geom_line[1][1]}  {geom_line[1][2]}"
         )
     p4_geom_str += f"\nsymmetry {kwargs['symmetry']}"
-    p4_geom_str += f"\nunits angstrom"
+
+    if unit.lower() == "angstrom":
+        p4_geom_str += f"\nunits angstrom"
+    elif unit.lower() == "bohr":
+        p4_geom_str += f"\nunits bohr"
+
+    if no_reorient:
+        p4_geom_str += f"\nno_reorient"
+    if no_com:
+        p4_geom_str += f"\nno_com"
 
     print(" ==> Psi4 geometry <==")
     print("-------------------------")
@@ -84,8 +105,9 @@ def create_psi_mol(**kwargs):
             "basis": basis,
             "scf_type": "pk",
             "reference": scf_ref_type,
-            "e_convergence": 1e-8,
-            "d_convergence": 1e-8,
+            "e_convergence": e_convergence,
+            "d_convergence": d_convergence,
+            "maxiter": 500,
             "ci_maxiter": 100,
             "num_frozen_docc": kwargs["num_frozen_docc"],
             "num_frozen_uocc": kwargs["num_frozen_uocc"],
@@ -95,7 +117,10 @@ def create_psi_mol(**kwargs):
     )
 
     # run psi4 caclulation
-    p4_Escf, p4_wfn = psi4.energy("SCF", return_wfn=True)
+    if restart:
+        p4_Escf, p4_wfn = psi4.energy("SCF", return_wfn=True, restart_file=restart)
+    else:
+        p4_Escf, p4_wfn = psi4.energy("SCF", return_wfn=True)
 
     # Run additional computations requested by the user
     if kwargs["run_mp2"]:

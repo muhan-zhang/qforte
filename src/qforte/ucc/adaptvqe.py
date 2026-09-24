@@ -214,7 +214,7 @@ class ADAPTVQE(UCCVQE):
                     if self._use_projection:
                         self._projection = proj_dict.copy()
                         self._Nl = len(self._qb_ham.terms()) * self._projection.get(
-                            "nbetas"
+                            "grad_meas_coeff"
                         )
                     self._pool_switch_prep = True
                 continue
@@ -429,6 +429,8 @@ class ADAPTVQE(UCCVQE):
                 options=opts,
                 callback=self.report_iteration,
             )
+
+            # print("nfev: ", res.nfev, ", njev: ", res.njev)
 
             # account for energy evaluations
             self._n_pauli_measures_k += self._Nl * res.nfev
